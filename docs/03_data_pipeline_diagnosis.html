@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>数据生成链路诊断：为什么你的数据里没有信道畸变</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --ink:#1c1f23;
+    --muted:#5f6673; --red:#b3261e; --redbg:#fdecea;
+    --amber:#8a5a00; --amberbg:#fff6e5; --green:#1d6b45; --greenbg:#eaf6ef;
+    --blue:#1a4f8a; --bluebg:#eaf2fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+       font-size:14px;line-height:1.75;}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 32px 80px}
+  h1{font-size:23px;font-weight:600;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+  h2{font-size:17px;font-weight:600;margin:38px 0 12px;padding-left:11px;border-left:4px solid var(--blue)}
+  h3{font-size:14px;font-weight:600;margin:22px 0 8px;color:#2c3138}
+  p{margin:8px 0}
+  .verdict{background:var(--redbg);border:1px solid #f3c9c4;border-left:5px solid var(--red);
+           border-radius:6px;padding:16px 20px;margin:18px 0 8px}
+  .verdict b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;margin:12px 0 6px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:600;color:#333a44}
+  td code,code{background:#f1f3f6;border:1px solid #e4e7eb;border-radius:3px;
+       padding:1px 5px;font-family:Consolas,"Courier New",monospace;font-size:12.5px;color:#8a2a20}
+  pre{background:#f6f8fa;border:1px solid var(--line);border-radius:6px;padding:12px 16px;
+      overflow-x:auto;font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.6}
+  pre code{background:none;border:none;padding:0;color:#24292e}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  .tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:10px;
+       border:1px solid;margin-right:6px;white-space:nowrap;line-height:1.7}
+  .t-red{color:var(--red);border-color:#e8b4af;background:var(--redbg)}
+  .t-green{color:var(--green);border-color:#b6dcc7;background:var(--greenbg)}
+  .t-blue{color:var(--blue);border-color:#b8d2ec;background:var(--bluebg)}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;margin:12px 0}
+  .num{font-family:Consolas,monospace;color:var(--red);font-weight:600}
+  .ok{font-family:Consolas,monospace;color:var(--green);font-weight:600}
+  .foot{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>数据生成链路诊断</h1>
+<div class="sub">对象：<code>D:\project\信道产生\Input_PE.m</code> · <code>PEsim_main_parfor.m</code> · <code>untitled2.m</code>（你改的版本）· <code>chirp_signal.mat</code><br>
+方法：对全部 .mat 做二进制解析 + 纯 Python FFT 频谱分析 + 匹配滤波</div>
+
+<div class="verdict">
+<b>一句话结论：</b>老师原来的代码是自洽的 —— 信道定义在 <b>24000 Hz</b>，chirp 在 <b>9600 Hz</b>，中间必须做一次重采样。
+你把 <code>fct</code> 从 3 改成 10 提速，但 <code>fl/fct</code> 是<b>直接当 DFT 的 bin 索引用的</b>，
+所以信道通带从 798~1500 Hz 整体下移到了 <b>237~447 Hz</b>；再加上重采样被删掉，
+现在<b> chirp 的频带和信道的频带完全不重叠</b> —— 信道算得再准，信号也过不去。
+</div>
+
+<h2>一、老师的代码是怎么自洽的</h2>
+<table>
+<tr><th>参数</th><th>值</th><th>含义</th></tr>
+<tr><td><code>Len</code></td><td>8000</td><td>冲激响应长度（点数）</td></tr>
+<tr><td><code>fl / fh</code></td><td>798 / 1500 Hz</td><td>换能器工作频带</td></tr>
+<tr><td><code>fct</code></td><td>3 Hz</td><td>频率步进</td></tr>
+<tr><td><code>Vfre</code></td><td>798:3:1500</td><td><b>235 个频点</b>（我在 <code>data1/sim_para1.mat</code> 里核对过，确实是 235 点、3 Hz 步长）</td></tr>
+<tr><td>写入位置</td><td><code>F(fl/fct : fh/fct)</code></td><td>= <code>F(266:500)</code></td></tr>
+</table>
+<div class="box">
+<b>反推采样率：</b>8000 点 DFT 的第 <em>k</em> 个 bin 对应频率 <em>k</em>·(fs/8000)。
+要让 bin 266 对应 798 Hz，必须有 <code>fs/8000 = 3 Hz</code>，即 <b>fs = 24000 Hz</b>。<br>
+反过来验证：500 × 3 = 1500 Hz ✓ —— 与 <code>fh</code> 严丝合缝。<br>
+所以 <code>fl/fct</code> 之所以能当 bin 用，<b>是因为 fct 恰好等于频率分辨率 df = 3 Hz</b>。这是一个隐藏的耦合。
+</div>
+
+<h2>二、你把 fct 改成 10，把通带搬走了</h2>
+<pre><code>F(fl/fct : fh/fct) = Vpress;
+
+fct = 3  →  F(266 : 500)   →  归一化频率 0.03325 ~ 0.06250   ✓ 正确
+fct = 10 →  F(79.8 : 150)  →  归一化频率 0.00998 ~ 0.01875   ✗ 下移 3.33 倍</code></pre>
+<p>实测你生成的全部 <code>channel_H_*.mat</code>（我抽查了 <code>信道产生/data</code> 和 <code>信道产生2/data</code> 共 9 个文件）：</p>
+<table>
+<tr><th>文件</th><th>99% 能量带（归一化）</th><th>换算 bin</th><th>换算 Hz（fs=24000）</th></tr>
+<tr><td><code>channel_H_1.mat</code></td><td>0.00989 ~ 0.01868</td><td>79 ~ 149</td><td>237 ~ 448</td></tr>
+<tr><td><code>channel_H_88.mat</code></td><td>0.00989 ~ 0.01868</td><td>79 ~ 149</td><td>237 ~ 448</td></tr>
+<tr><td><code>channel_H_230.mat</code></td><td>0.00989 ~ 0.01868</td><td>79 ~ 149</td><td>237 ~ 448</td></tr>
+<tr><td><code>信道产生2/channel_H_8.mat</code></td><td>0.00989 ~ 0.01868</td><td>79 ~ 149</td><td>237 ~ 448</td></tr>
+<tr><td><b>老师原代码的目标</b></td><td><b>0.03325 ~ 0.06250</b></td><td><b>266 ~ 500</b></td><td><b>798 ~ 1500</b></td></tr>
+</table>
+<p>而且信道通带里 99.85% 的能量都压在 79~149 这一段，<b>266~500 那一段能量为零</b>。通带不是"变宽"或"变窄"，是整体搬走了。</p>
+
+<h2>三、chirp 在 9600 Hz，信道在 24000 Hz</h2>
+<p>我对 <code>chirp_signal.mat</code>（9600 点）做了 FFT：</p>
+<table>
+<tr><th>信号</th><th>99% 能量归一化频带</th><th>×9600 Hz</th><th>×24000 Hz</th></tr>
+<tr><td><code>chirp_signal</code></td><td>0.08337 ~ 0.15607</td><td class="ok">800 ~ 1498 Hz</td><td>2001 ~ 3746 Hz</td></tr>
+<tr><td>老师信道通带</td><td>0.03325 ~ 0.06250</td><td>319 ~ 600 Hz</td><td class="ok">798 ~ 1500 Hz</td></tr>
+</table>
+<div class="box">
+<b>决定性验证：</b>把 chirp 的归一化频带除以 2.5（即 9600 → 24000 Hz 的重采样比）：<br>
+0.08337 / 2.5 = <b>0.03335</b>，0.15607 / 2.5 = <b>0.06243</b><br>
+与老师信道通带 <b>0.03325 ~ 0.06250</b> 吻合到小数点后第三位。<br><br>
+<b>结论：chirp 文件确实是 9600 Hz 采样的，必须先 <code>resample(chirp, 24000, 9600)</code> 才能和信道卷积。</b>
+</div>
+<p>你在 Gemini 指导下删掉了 <code>resample</code>（代码里那行注释写着"彻底废除物理错误的 resample"）——
+那一步不是物理错误，它正是采样率转换。删掉之后，两个信号的归一化频带相差 2.5 倍，卷积结果为零。</p>
+
+<h2>四、实测：现在的数据里发生了什么</h2>
+<p>上面那张频谱图是三条曲线的实测结果，横轴归一化频率：</p>
+<ul>
+<li><b>干净 chirp</b>：0.083 ~ 0.156 一条平坦的通带（线性调频的典型谱形），带宽 99% 集中在此。</li>
+<li><b>你的 channel_H</b>：尖峰在 0.010 ~ 0.019，其他地方低 4 个数量级。<b>与 chirp 零重叠。</b></li>
+<li><b>含噪信号</b>：能量 62 ~ 83% 压在你的信道那个错误频带（0.0099~0.0187），谱密度是旁带的 30 ~ 40 倍；
+chirp 所在的 0.083 ~ 0.156 处只有一个约 5 倍于本地底噪的小台阶。</li>
+</ul>
+
+<h3>匹配滤波：chirp 在，但没有经过信道</h3>
+<table>
+<tr><th>样本</th><th>相关峰/底噪</th><th>峰值位置（延迟）</th><th>对齐后 corr</th><th>该段真实 SNR</th></tr>
+<tr><td><code>te_signal/test_sample_1</code></td><td>50.2 倍（34.0 dB）</td><td>8002</td><td>+0.353</td><td>−8.48 dB</td></tr>
+<tr><td><code>te_signal/test_sample_2</code></td><td>38.9 倍（31.8 dB）</td><td>7998</td><td>−0.293</td><td>−10.27 dB</td></tr>
+<tr><td><code>tr_signal/chrip_with_noise1000</code></td><td>26.8 倍（28.6 dB）</td><td>9370</td><td>+0.261</td><td>−11.75 dB</td></tr>
+<tr><td><code>tr_signal/chirp_with_noise_1</code>（4 月批）</td><td>2.4 倍（7.4 dB）</td><td>9579</td><td>—</td><td>—</td></tr>
+</table>
+<div class="box">
+<b>怎么读这张表：</b>如果 chirp 经过了信道，互相关峰应该是<b>展宽的、带多径结构的</b>，而且峰值位置对应信道的群时延。
+实测是一个<b>单窄峰、延迟固定 ≈ 8000 点</b>（正好是 H 的长度），对齐后 corr = 0.35 —— 
+在 −8.5 dB SNR 下，理论上限就是 √(Ps/(Ps+Pn)) = 0.354，<b>实测值与之完全一致</b>。<br><br>
+也就是说：<b>信号是以"原样 + 纯延迟"的形式加进去的，你的信道没有对信号做任何畸变，它只把噪声染了色。</b>
+</div>
+
+<h2>五、怎么修</h2>
+
+<h3><span class="tag t-red">修 1</span>信道生成：bin 索引必须与 fct 解耦</h3>
+<pre><code>fs  = 24000;  Len = 8000;
+df  = fs/Len;                        % 3 Hz —— 与原代码一致
+fl  = 798;    fh = 1500;
+fct = 10;                            % 仍然稀疏，省 RAM 调用
+Vfre = fl:fct:fh;                    % 71 点
+% ... 逐点算 Vpress ...
+Vfull = interp1(Vfre, Vpress, fl:df:fh, 'linear', 'extrap');   % 插值回 3 Hz 网格
+F = zeros(1, Len);
+F(round((fl:df:fh)/df)) = Vfull;     % ★ = 266:500，与 fct 无关
+H = ifft(F, 'symmetric');            % 实数冲激响应</code></pre>
+<p>一句话：<b>bin 索引由 fs 和 Len 决定，绝不能用 <code>fl/fct</code>。</b></p>
+
+<h3><span class="tag t-red">修 2</span>数据生成：先把 chirp 重采样到 24000 Hz</h3>
+<pre><code>clean24 = resample(clean, 24000, 9600);    % ★ 9600 → 24000，时长不变
+y       = conv(clean24, channel_H);        % 现在频带对齐了
+noisy   = y + randn(size(y)) * sqrt(Py/10^(snr/10));</code></pre>
+
+<h3><span class="tag t-green">修 3</span>重新生成后必须自检</h3>
+<ol>
+<li>新的 <code>channel_H</code> 的 99% 能量应落在归一化频率 <b>0.0333 ~ 0.0625</b>（不是 0.0099~0.0187）。</li>
+<li>新的含噪信号的信号成分应在 <b>0.0333 ~ 0.0625</b>，而不是 0.0834 ~ 0.1561。</li>
+<li>与 clean 的互相关峰值应在 <b>0 延迟附近</b>（而非 8000），且波形应体现<b>时延扩展</b>。</li>
+</ol>
+
+<h2>六、关于"跑得慢"</h2>
+<table>
+<tr><th>方法</th><th>加速比</th><th>代价</th></tr>
+<tr><td>把 fct 从 3 改到 10</td><td>3.3×（235 → 71 次 RAM 调用）</td><td class="num">频率采样变稀疏，必须插值补偿；而且你这次把 bin 索引一起改错了</td></tr>
+<tr><td>开 parfor 并行</td><td>≈ 核数倍（4 核 4×，8 核 8×）</td><td class="ok">不牺牲任何精度</td></tr>
+<tr><td>放粗 RAM 的 dz 网格（<code>dz = 1500/freq/20</code> → <code>/10</code>）</td><td>约 2×</td><td>深度分辨率略降</td></tr>
+</table>
+<div class="box">
+老师的文件名就叫 <b><code>PEsim_main_parfor.m</code></b>，里面 <code>parpool('local', core_number)</code> 那三行是被注释掉的 —— 
+<b>他本来就是打算并行的。</b>把这三行打开、把内层 <code>for mm</code> 改成 <code>parfor mm</code>，
+比减频率点划算得多，而且不用动任何物理参数。<br><br>
+建议：<b>并行 + 保持 fct=3（或者 fct=5 再插值）</b>，不要为了提速去改 bin 映射。
+</div>
+
+<h2>七、还有一个要确认的地方</h2>
+<p>你的 <code>untitled2.m</code> 里把 <code>Dist</code> 从老师的 100000 m 改成了 20000 m。
+这会显著改变信道特性（衰减、多径结构、时延扩展）。如果是刻意降维测试没问题，
+但如果最终论文要报的是某个特定距离的结果，这个值必须明确。另外 <code>Depth=70+10*randi([1,12])</code> 与老师一致，没问题。</p>
+
+<div class="foot">
+所有结论均通过对 .mat 文件的二进制解析、纯 Python FFT 频谱分析与匹配滤波得到，可逐条复现。
+配套脚本：<code>fix_channel_gen.m</code>（信道生成修正版）、<code>fix_make_dataset.m</code>（数据生成修正版）。
+</div>
+
+</div>
+</body>
+</html>

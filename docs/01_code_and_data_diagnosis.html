@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>轻量化水声信号降噪模型 — 代码与数据诊断报告</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --ink:#1c1f23;
+    --muted:#5f6673; --red:#b3261e; --redbg:#fdecea;
+    --amber:#8a5a00; --amberbg:#fff6e5; --green:#1d6b45; --greenbg:#eaf6ef;
+    --blue:#1a4f8a; --bluebg:#eaf2fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+       font-size:14px;line-height:1.75;}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 32px 80px}
+  h1{font-size:23px;font-weight:600;margin:0 0 6px;letter-spacing:.2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+  h2{font-size:17px;font-weight:600;margin:38px 0 12px;padding-left:11px;
+     border-left:4px solid var(--blue)}
+  h3{font-size:14px;font-weight:600;margin:22px 0 8px;color:#2c3138}
+  p{margin:8px 0}
+  .verdict{background:var(--redbg);border:1px solid #f3c9c4;border-left:5px solid var(--red);
+           border-radius:6px;padding:16px 20px;margin:20px 0 8px}
+  .verdict b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;margin:12px 0 6px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:600;color:#333a44}
+  td code,code{background:#f1f3f6;border:1px solid #e4e7eb;border-radius:3px;
+       padding:1px 5px;font-family:Consolas,"Courier New",monospace;font-size:12.5px;color:#8a2a20}
+  ul{margin:8px 0 8px 0;padding-left:22px}
+  li{margin:5px 0}
+  .tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:10px;
+       border:1px solid;margin-right:6px;white-space:nowrap;line-height:1.7}
+  .t-red{color:var(--red);border-color:#e8b4af;background:var(--redbg)}
+  .t-amber{color:var(--amber);border-color:#e8d3a8;background:var(--amberbg)}
+  .t-green{color:var(--green);border-color:#b6dcc7;background:var(--greenbg)}
+  .t-blue{color:var(--blue);border-color:#b8d2ec;background:var(--bluebg)}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+       padding:14px 18px;margin:12px 0}
+  .num{font-family:Consolas,monospace;color:var(--red);font-weight:600}
+  .ok{font-family:Consolas,monospace;color:var(--green);font-weight:600}
+  .foot{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);
+        color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>轻量化水声信号降噪模型 — 代码与数据诊断报告</h1>
+<div class="sub">对象：<code>D:\project\降噪模型\Complete_Denoised_Model.py</code> ·
+数据：<code>D:\project\tr_signal(1)\tr_signal\chirp_with_noise_1.mat</code> 及同项目全部数据/权重/输出<br>
+方法：静态代码审查 + 全部 <code>.mat</code> 二进制解析 + 对 <code>output/</code> 已保存结果的独立复算</div>
+
+<div class="verdict">
+<b>一句话结论：</b>这份代码在当前数据上<u>一行都跑不通</u>；即使把路径和变量名修好让它跑通，
+由于<b>所有训练样本共用同一个干净目标</b>，它优化的其实是"从信道畸变+强噪声里重建某一个已知波形"，
+而不是"降噪"。已保存结果中那个 <span class="num">+16.7 dB</span> 的增益，无法证明模型具备实际降噪能力。
+</div>
+
+<h2>一、数据资产盘点（实测解析）</h2>
+
+<table>
+<tr><th>文件 / 目录</th><th>变量名</th><th>长度</th><th>幅度（rms）</th><th>数量</th><th>代码能否直接读</th></tr>
+<tr><td><code>tr_signal(1)/tr_signal/chirp_with_noise_*.mat</code></td><td>noisy_signal</td><td>9600</td><td>~1e-6</td><td>132（<b>仅 19 个唯一</b>）</td><td>否</td></tr>
+<tr><td><code>tr_signal(1)/tr_signal/chrip_with_noise*.mat</code></td><td>noisy_signal</td><td>18549</td><td>5e-13 ~ 1e-6</td><td>6652</td><td>否</td></tr>
+<tr><td><code>te_signal/test_sample_*.mat</code></td><td>noisy_signal</td><td>17599</td><td>~1.5e-7</td><td>11</td><td>否</td></tr>
+<tr><td><code>finetune_signal/training_sample_*.mat</code></td><td><b>chirp_with_noise</b></td><td>18549</td><td>~1e-9</td><td>13</td><td>是</td></tr>
+<tr><td><code>chirp_signal.mat</code>（干净目标）</td><td>chirp_signal</td><td>9600</td><td>0.707（幅值 ±1）</td><td>1</td><td>—</td></tr>
+<tr><td><code>optimized_lightweight_model.pth</code></td><td>—</td><td>—</td><td>99,005 参数</td><td>1</td><td>—</td></tr>
+</table>
+
+<div class="box">
+<b>关键结构发现：</b>含噪信号长度 <b>17599 = 9600（源 chirp）+ 8000（信道冲激响应 H）− 1</b>。
+这直接证明 <code>noisy_signal = conv(chirp, channel_H) + noise</code>——即送入网络的<u>不是"干净信号+噪声"</u>，
+而是<b>被水声信道严重畸变（且被衰减 4~6 个数量级）后的接收波形</b>。
+</div>
+
+<h2>二、阻断性缺陷：代码在当前数据上无法运行</h2>
+
+<h3>1. 数据路径全部写死在另一个盘</h3>
+<p><code>CFG</code> 里 <code>train_dir</code> / <code>test_dir</code> / <code>finetune_dir</code> / <code>target_signal</code> 全指向
+<code>E:/LNN_denoised/LNN_Denoise/NN_Code/</code>，而数据实际在 <code>D:/project/</code>。第一次 <code>os.listdir</code> 就会抛 <code>FileNotFoundError</code>。</p>
+
+<h3>2. 读取的变量名在三个数据集里对不上</h3>
+<p><code>DenoiseDataset.__getitem__</code> 固定读 <code>['chirp_with_noise']</code>，但：</p>
+<ul>
+<li><code>tr_signal</code>（两批全部 6784 个文件）→ 变量名是 <code>noisy_signal</code> → <b>KeyError</b></li>
+<li><code>te_signal</code>（11 个测试样本）→ 变量名是 <code>noisy_signal</code> → <b>KeyError</b></li>
+<li>只有 <code>finetune_signal</code> 用 <code>chirp_with_noise</code>，能读</li>
+</ul>
+<p>也就是说：<b>训练集和测试集都会直接崩，只有微调集能读</b>。</p>
+
+<h3>3. 信号长度被硬编码，与实际数据全部不符</h3>
+<p><code>input_size=18549</code> 同时写死在 <code>LayerNorm(18549)</code>、训练和推理三处，形成"长度锁死"：</p>
+<ul>
+<li>测试集是 <b>17599</b> 点 → <code>LayerNorm</code> 直接报 <i>expected input with shape [*, 18549]</i></li>
+<li>干净目标 <code>chirp_signal.mat</code> 只有 <b>9600</b> 点，而 <code>__getitem__</code> 里 <code>min_len</code> 截断会把输入也截成 9600 → 同样报错，且白白丢掉信号后半段 60%</li>
+<li>April 批训练数据是 9600 点 → 报错</li>
+</ul>
+<p><b>而且：</b>模型文件里 <code>LayerNorm</code> 的尺寸确实是 18549，说明<u>权重是在与当前磁盘上完全不同的数据上训练的</u>。
+<code>output/</code> 里保存的含噪信号长度是 18549、干净目标是 18549——<b>当前 <code>te_signal</code>（17599）和 <code>chirp_signal.mat</code>（9600）都不是当初那次运行的数据</b>。项目状态已经自相矛盾，现有结果不可复现。</p>
+
+<h3>4. 文件名排序正则对一半文件失效</h3>
+<p><code>sort_files_numerically</code> 用 <code>r"_(\d+)\.mat$"</code> 提取序号。<code>chirp_with_noise_1.mat</code> 能匹配，
+但 May 批的文件名是 <code>chrip_with_noise6767.mat</code>（既拼错了 <i>chrip</i>，数字前也没有下划线）→ 全部返回 <code>float('inf')</code>，
+排序退化为 <code>os.listdir</code> 的任意顺序。若训练目录指向 May 批，样本序号完全失效。</p>
+
+<h2>三、方法论缺陷（这才是真正要命的部分）</h2>
+
+<h3>5. 所有样本共用同一个干净目标 → 任务退化</h3>
+<p><code>DenoiseDataset</code> 里 <code>self.clean_signal</code> 是<b>一个固定的 chirp</b>，对所有 6652 个样本反复使用。
+网络要学的因此不是"去噪"，而是"从任意畸变输入里复原<u>这唯一一个已知波形</u>"。这个先验太强，模型完全可以绕开输入直接"背"出目标波形。</p>
+
+<h3>6. 训练集里有大量"纯噪声样本"，在教模型凭空生成 chirp</h3>
+<p>抽样 60 个 May 批样本，rms 从 <span class="num">5.36e-13</span> 到 <span class="num">1.04e-6</span>，<b>跨越 6 个数量级</b>。
+中位数 1.7e-7。那些 rms 只有 1e-13 的样本，信号分量已被信道衰减到噪声之下，本质上是<b>纯噪声被贴上了"干净 chirp"的标签</b>——
+这正是训练"幻觉式生成器"的标准配方。</p>
+
+<h3>7. 幅度域不一致：输入 1e-7，目标 0.707</h3>
+<p>网络第一层对输入做 <code>LayerNorm</code>（零均值、单位方差），输出经 <code>tanh</code> 限制在 (−1, 1)；
+但损失函数直接拿输出和<b>物理量纲</b>的 <code>clean</code>（幅值 ±1，rms 0.707）比。
+归一化域与物理域被混在一起，损失的含义是含混的。</p>
+
+<h3>8. <code>snr_threshold = 60 dB</code> 不现实，且与已有结果自相矛盾</h3>
+<p>实测真实输入 SNR 只有 <span class="num">−1 dB</span> 左右。60 dB 门限意味着"直接输出"分支<u>永远不可能命中</u>，
+每个文件都会被强制微调 5 轮。但 <code>output/iterative_transfer_learning_results.txt</code> 里 11 个样本全部记录为
+<b>"否 / 0 次微调"</b>，最终 SNR 仅 18 dB——说明那份结果是<u>另一版代码</u>跑出来的，和当前 <code>CFG</code> 不自洽。</p>
+
+<h3>9. SNR 指标是自造的，而且会静默失效</h3>
+<p><code>calculate_snr_intervals</code> 用"另一个时段的噪声"去减信号段来估"纯信号功率"。问题：</p>
+<ul>
+<li>对非平稳噪声、信道畸变信号完全失效。实测：代码对 <code>test_sample_1</code> 自报原始 SNR <b>5.79 dB</b>，而按 <code>clean</code> 真值算是 <b>−1.44 dB</b>，<b>偏差约 7 dB</b>。</li>
+<li>当噪声段比信号段长时 <code>np.tile(x, 0)</code> 返回空数组，<code>signal_part - 空数组</code> 会广播报错——潜伏崩溃。</li>
+<li>区间 <code>(1.0, 1.2, 1.6, 1.8)</code> 对 9600 点的信号取 <code>signal[15360:17280]</code> 得到空数组，被 <code>continue</code> 静默跳过——实际只用了 1 段区间，却以为用了 2 段。</li>
+<li>区间 <code>(0.8, 1.0, 0.1, 0.3)</code> 和 <code>fs=9600</code> 是对某一批数据写死的，换数据即失效。</li>
+</ul>
+
+<h2>四、网络结构缺陷</h2>
+
+<table>
+<tr><th>位置</th><th>问题</th></tr>
+<tr><td><code>input_norm = LayerNorm(18549)</code></td>
+<td>单个 LayerNorm 就占 <span class="num">37,098</span> 参数，是全模型 <span class="num">99,005</span> 参数的 <b>37.5%</b>。
+一个"轻量化"模型里近四成参数花在一个全长度归一化上，且它把模型<b>锁死</b>在固定输入长度。</td></tr>
+<tr><td><code>final_fusion</code> 的 <code>tanh</code></td>
+<td>把输出硬限幅在 (−1, 1)。目标幅值是 ±1，看似刚好，但只要信号幅值超过 1（或需要任何 >1 的动态范围），模型<b>永远拟合不了</b>。
+同时这个 tanh 把前面精心设计的"残差连接保持信号主体结构"<b>整个抹掉</b>——<code>residual</code> 加进去再被 tanh 压平，等于没加。</td></tr>
+<tr><td><code>_init_weights</code></td>
+<td>在 <code>__init__</code> 末尾对<b>所有</b> <code>Conv1d</code> 做 kaiming 初始化，会把上一行刚设好的
+<code>signal_preservation.weight = 1.0 / bias = 0.0</code>（恒等初始化）<b>覆盖掉</b>。那段"保持信号"的初始化是死代码。</td></tr>
+<tr><td>频域分支</td>
+<td>噪声估计 mask（Sigmoid）和幅度 mask（Sigmoid）<b>级联相乘两次</b>，双重压制导致过抑制；
+相位修正系数 <code>0.1</code> 是硬编码常数，无依据。</td></tr>
+<tr><td>时/频融合</td>
+<td><code>softmax([time_weight, freq_weight])</code> 对两个标量做归一化——形式上像注意力，本质只是 2 参数凸组合，
+且时域分支输出有 tanh 限幅、频域分支输出无界，两者统计量不一致却直接加权相加。</td></tr>
+<tr><td><code>DepthwiseSeparableConv2d(1, 16, …)</code></td>
+<td>输入通道为 1 时，<code>groups=1</code> 的 depthwise 就是普通卷积，<b>并没有省任何参数</b>。</td></tr>
+<tr><td><code>signal_preservation</code></td>
+<td>1×1 卷积，等价于一个可学习标量，再乘 0.1，纯冗余。</td></tr>
+<tr><td>残差</td>
+<td><code>output = residual + 0.3*fused + 0.1*preserved</code> 之后又 <code>+ 0.2*x_norm</code>——输入被加了两次。</td></tr>
+</table>
+
+<h2>五、工程与流程问题</h2>
+<ul>
+<li><code>__getitem__</code> 每次 <code>sio.loadmat</code> 全量读盘。6652 个文件 × 100 epoch，无缓存、无预处理、无标准化，I/O 会成为瓶颈。</li>
+<li><code>torch.save(model.cpu().state_dict())</code> 紧接 <code>model.to(device)</code>：每次刷新最佳模型都要把整个模型在 CPU/GPU 之间搬两趟。</li>
+<li>微调函数每轮都重建 <code>Dataset</code> 和 <code>DataLoader</code>，而微调集只有 13 个样本、batch=2——每轮只跑 7 个 batch。</li>
+<li>训练循环用 <code>except Exception: continue</code> 吞掉一切异常。<code>avg_loss</code> 可能只由极少数成功的 batch 算出，却当作整轮指标。</li>
+<li>没有设置随机种子，结果不可复现。</li>
+<li>项目里存在 <code>信道产生</code> ~ <code>信道产生6</code> 六份几乎相同的仿真代码副本，以及 <code>data</code>/<code>data1</code>/<code>data2</code>/<code>data(1)</code> 多份数据副本，版本管理混乱。</li>
+<li>训练集重复：April 批 132 个文件只有 <b>19 个唯一</b>（85% 是重复样本），会严重加剧过拟合。</li>
+</ul>
+
+<h2>六、我做的独立复算（对 <code>output/</code> 里 27 个已保存结果）</h2>
+
+<table>
+<tr><th>指标</th><th>数值</th><th>含义</th></tr>
+<tr><td>corr(noisy, clean) 平均</td><td class="num">0.022</td><td>含噪输入与干净目标几乎不相关，真实 SNR ≈ −1 dB</td></tr>
+<tr><td>corr(denoised, clean) 平均</td><td class="ok">0.985</td><td>输出与干净目标高度相关</td></tr>
+<tr><td>真实 SNR 增益（以 clean 为参考）</td><td class="ok">平均 16.67 dB</td><td>−1 dB → 约 +13 dB，最高 +22 dB</td></tr>
+<tr><td>代码自报平均增益</td><td>13.35 dB</td><td>自报"原始 SNR" 5.79 dB vs 真实 −1.44 dB，指标偏差约 7 dB</td></tr>
+<tr><td><b>27 个输出两两之间的相关</b></td><td class="num">0.977</td><td rowspan="2"><b>输出彼此几乎一样，而输入彼此几乎不相关</b>。由于所有样本的目标本就是同一个 chirp，
+这一现象无法区分"完美降噪"与"直接生成固定波形"——现有实验设计<b>缺少判别能力</b>。</td></tr>
+<tr><td><b>27 个输入两两之间的相关</b></td><td class="num">0.026</td></tr>
+</table>
+
+<div class="box">
+<b>这意味着：</b>要证明模型真的在降噪，必须补一个"目标信号不在训练集中"的测试集。
+当前设计下，无论模型是真的会降噪还是只会背波形，都会得到同样漂亮的数字。
+</div>
+
+<h2>七、修改建议（按优先级）</h2>
+
+<h3><span class="tag t-red">P0</span>先让实验具备说服力</h3>
+<ol>
+<li><b>目标信号必须多样化。</b>用不同中心频率 / 调频斜率 / 时延 / 幅度 / 初相的 chirp（或实测 HFM）做目标，
+并把训练目标与测试目标<b>严格分离</b>。这是整个工作的前提。</li>
+<li><b>明确任务边界。</b>如果目标是"信道均衡"，就把它当反卷积做，并给出信道估计；如果只是"降噪"，
+就应当把 <code>conv(chirp, H)</code> 作为"干净信号"、只叠噪声作为"含噪信号"，不要混在一起。</li>
+<li><b>换掉 SNR 评估。</b>直接用 <code>10·log10(‖s‖²/‖ŝ−s‖²)</code>，参考真值 <code>s</code>。
+同时补 SI-SDR / PESQ / STOI 等客观指标，并按帧分段统计。</li>
+<li><b>修数据读取：</b>变量名改为自动探测（<code>noisy_signal</code> / <code>chirp_with_noise</code> 兼容），
+或统一生成端命名。</li>
+<li><b>去掉硬编码长度：</b>要么全局统一长度，要么用自适应池化 / 可变长 STFT 让模型支持任意长度。
+把 <code>LayerNorm(18549)</code> 换成逐帧归一化（如 <code>LayerNorm</code> 作用在频点维）或直接删掉——它是 37.5% 的参数负担。</li>
+</ol>
+
+<h3><span class="tag t-amber">P1</span>修数据质量</h3>
+<ol start="6">
+<li>删除 132 个重复样本中的 113 个重复项；检查 May 批是否也有隐藏重复。</li>
+<li>剔除 rms 低于噪声底线的样本（信号被完全淹没的样本只会教模型幻觉）。</li>
+<li>生成时记录每个样本的真实 SNR，按 SNR 分层采样，避免 6 个数量级的幅度跨度。</li>
+<li>把数据预加载成单个 <code>.npz</code> 或 <code>memmap</code>，替代逐个 <code>loadmat</code>。</li>
+</ol>
+
+<h3><span class="tag t-green">P2</span>修模型与训练</h3>
+<ol start="10">
+<li>去掉 <code>final_fusion</code> 的 <code>tanh</code>（或改成 <code>输出 = a·input + (1−a)·net(input)</code> 的可学习凸组合），
+否则输出动态范围被永久限制。</li>
+<li>把"残差 + tanh"的顺序理顺：要么 <code>tanh(net)</code> 后与输入相加，要么干脆不做 tanh。</li>
+<li>修复 <code>_init_weights</code> 覆盖恒等初始化的问题（把 <code>_init_weights</code> 移到 <code>__init__</code> 最前面，或对 <code>signal_preservation</code> 单独重设）。</li>
+<li>把两级 Sigmoid mask 合并为一级（如复值掩码 CRM 或比值掩码 IRM）。</li>
+<li>损失函数去掉与主损失同向的冗余项 <code>noise_reduction</code> 比值项；<code>smoothness_loss</code> 建议改成对<b>残差</b>的 L1，
+直接约束"输出 − 输入"的稀疏性，更贴合降噪目标。</li>
+<li>取消 <code>except: continue</code> 静默吞异常，让错误暴露出来；固定随机种子。</li>
+</ol>
+
+<div class="foot">
+报告基于对 <code>D:\project</code> 下全部 <code>.mat</code> 文件的二进制解析、模型权重（99,005 参数）的结构解析，
+以及对 <code>output/</code> 中 27 个结果文件的独立数值复算得出。所有数值均可在项目数据上复现。
+</div>
+
+</div>
+</body>
+</html>

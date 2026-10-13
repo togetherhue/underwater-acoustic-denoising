@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>水声降噪模型 — 泛化实验报告</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:44px 26px 90px;background:#f5f6f8;color:#1f2328;
+  font:15px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:27px;margin:0 0 6px;letter-spacing:-.3px}
+.sub{color:#6b7280;font-size:13.5px;margin-bottom:30px}
+h2{font-size:19.5px;margin:44px 0 14px;padding-left:11px;border-left:4px solid #2f6fd0}
+h3{font-size:15.5px;margin:26px 0 9px;color:#333}
+p{margin:11px 0}
+.card{background:#fff;border:1px solid #e3e6ea;border-radius:11px;padding:20px 24px;
+  box-shadow:0 1px 3px rgba(0,0,0,.045)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin:18px 0}
+.kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:15px 17px}
+.kpi .k{font-size:11.5px;color:#6b7280;letter-spacing:.4px}
+.kpi .v{font-size:23px;font-weight:650;margin-top:5px;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:#8a919b;margin-top:2px}
+.kpi.hi .v{color:#1a7f45}
+table{width:100%;border-collapse:collapse;margin:15px 0;font-size:13.5px;
+  background:#fff;border:1px solid #e3e6ea;border-radius:10px;overflow:hidden}
+th,td{padding:9px 13px;text-align:right;border-bottom:1px solid #eef0f3}
+th{background:#f0f2f5;font-weight:600;font-size:12.5px;color:#4b5563}
+th:first-child,td:first-child{text-align:left}
+tbody tr:last-child td{border-bottom:none}
+tr.best{background:#eef8f1;font-weight:600}
+tr.best td{color:#12633a}
+.pos{color:#1a7f45;font-weight:600}
+figure{margin:20px 0;background:#fff;border:1px solid #e3e6ea;border-radius:11px;
+  padding:13px;box-shadow:0 1px 3px rgba(0,0,0,.045)}
+figure img{width:100%;display:block;border-radius:6px}
+figcaption{font-size:12.5px;color:#6b7280;margin-top:10px;padding:0 5px;line-height:1.6}
+.ok{background:#eef8f1;border:1px solid #bfe3cd;border-left:4px solid #1a7f45;
+  border-radius:8px;padding:15px 19px;margin:18px 0}
+.ok b{color:#12633a}
+.warn{background:#fff8e8;border:1px solid #f0d9a8;border-left:4px solid #d99a1b;
+  border-radius:8px;padding:15px 19px;margin:18px 0}
+.warn b{color:#8a5a00}
+code{background:#eef1f4;padding:1.5px 6px;border-radius:4px;font-size:12.5px;
+  font-family:"Cascadia Code",Consolas,monospace}
+ul,ol{margin:11px 0;padding-left:23px}
+li{margin:6px 0}
+.note{font-size:12.5px;color:#6b7280;margin-top:9px}
+hr{border:none;border-top:1px solid #e3e6ea;margin:36px 0}
+.factor{display:grid;grid-template-columns:1.1fr 1fr 1fr;border:1px solid #e3e6ea;
+  border-radius:10px;overflow:hidden;background:#fff;margin:16px 0;font-size:13px}
+.factor div{padding:14px 16px;border-right:1px solid #eef0f3;border-bottom:1px solid #eef0f3}
+.factor div:nth-child(3n){border-right:none}
+.factor .hd{background:#f0f2f5;font-weight:600;font-size:12.5px;color:#4b5563;text-align:center}
+.factor .cell b{font-size:17px;color:#12633a;font-variant-numeric:tabular-nums}
+.factor .cell .sm{font-size:11.5px;color:#8a919b;display:block;margin-top:2px}
+.factor .cell.na{color:#9aa2ab}
+</style></head><body><div class="wrap">
+
+<h1>水声降噪模型 — 泛化能力实验报告</h1>
+<div class="sub">2×2 因子设计（波形 × 信道）+ 分支消融 · 数据：<code>D:/project/dataset_v3</code>
+（10,600 样本，5.25 GB）· 2026-10-13</div>
+
+<h2>一句话结论</h2>
+<div class="ok">
+<b>模型对「没见过的新信道」泛化几乎零代价。</b><br>
+表面上看，新信道的增益（+11.93 dB）比见过的信道（+14.05 dB）低 2.1 dB。
+但把「信道难度」控制住之后，这个差距<b>只剩 0.3 ~ 0.4 dB</b> ——
+因为抽作测试的 4 个信道恰好是全 25 个信道里时延扩展最大的 4 个。<br>
+同时，对「没见过的新波形」的泛化代价约 <b>0.09 dB（可忽略）</b>。<br>
+消融还发现：<b>仅频域分支（1,910 参数，完整模型的 1/30）就拿到 98% 的性能</b>，
+时域分支只值 0.20 dB。
+</div>
+
+<h2>一、这个实验要回答什么</h2>
+<div class="warn">
+<b>上一版（v2）留下的最大缺口：</b>测试集用了 3 组从未参与训练的 chirp 波形，
+这验证了「波形泛化」；但<b>25 个信道全部出现在训练集里</b>，
+所以无法回答一个更关键的问题：<b>换成没见过的信道，模型还行不行？</b><br>
+如果模型只是"记住了这 25 个信道的多径结构"，那它在真实场景（信道未知且时变）就毫无价值。
+</div>
+
+<h2>二、实验设计：2×2 因子</h2>
+<p>把 25 个信道和 20 组 chirp 波形<b>同时</b>分组，构造四个格子：</p>
+<div class="factor">
+<div class="hd"></div><div class="hd">见过的信道（1–18）</div><div class="hd">新信道（22–25）</div>
+<div class="hd">见过的波形<br>chirp 1–14</div>
+<div class="cell na">训练集<span class="sm">7,560 样本，不评测</span></div>
+<div class="cell"><b>testB +11.93 dB</b><span class="sm">1,120 样本</span></div>
+<div class="hd">新波形<br>chirp 18–20</div>
+<div class="cell"><b>testA +14.05 dB</b><span class="sm">1,080 样本</span></div>
+<div class="cell"><b>testC +12.02 dB</b><span class="sm">480 样本</span></div>
+</div>
+
+<table>
+<thead><tr><th>split</th><th>chirp</th><th>信道</th><th>样本数</th><th>用途</th></tr></thead>
+<tbody>
+<tr><td>train</td><td>1–14</td><td>1–18</td><td>7,560</td><td>训练</td></tr>
+<tr><td>val</td><td>15–17</td><td>19–21</td><td>360</td><td>选模型（波形与信道都是新的）</td></tr>
+<tr><td>testA</td><td>18–20</td><td>1–18</td><td>1,080</td><td>只换波形</td></tr>
+<tr><td>testB</td><td>1–14</td><td>22–25</td><td>1,120</td><td>只换信道</td></tr>
+<tr><td>testC</td><td>18–20</td><td>22–25</td><td>480</td><td>两者都换</td></tr>
+</tbody></table>
+<p class="note">三个测试集都覆盖 5 档 SNR（−10/−5/0/+5/+10 dB）各 4–8 次噪声实现，
+输入 SNR 均为 6.19 dB，可直接横向比较。</p>
+
+<div class="ok">
+<b>一个重要的可对照性验证：</b>testA 用的波形（chirp 18–20）与 v2 完全一致。
+我逐点比对了 testA 与 v2 测试集的 <code>clean_signal</code>：
+<b>相关系数 = 1.0000000000，最大绝对差 = 0</b>（完全相同的数组）。
+所以 testA 的结果可以直接和 v2 报告的 +13.66 dB 对照。
+</div>
+
+<h2>三、主结果</h2>
+<div class="grid">
+<div class="kpi hi"><div class="k">testA 新波形·见信道</div><div class="v">+14.05</div><div class="d">dB（输出 20.24）</div></div>
+<div class="kpi"><div class="k">testB 见波形·新信道</div><div class="v">+11.93</div><div class="d">dB（输出 18.12）</div></div>
+<div class="kpi"><div class="k">testC 新波形·新信道</div><div class="v">+12.02</div><div class="d">dB（输出 18.21）</div></div>
+<div class="kpi"><div class="k">变差样本</div><div class="v">0</div><div class="d">/ 2680（全部改善）</div></div>
+</div>
+<table>
+<thead><tr><th>测试集</th><th>样本</th><th>输入 SNR</th><th>输出 SNR</th><th>SNR 提升</th><th>SI-SDR 提升</th></tr></thead>
+<tbody>
+<tr><td>testA 新波形 + 见过的信道</td><td>1080</td><td>6.19</td><td>20.24</td><td class="pos">+14.05</td><td class="pos">+14.02</td></tr>
+<tr><td>testB 见过的波形 + <b>新信道</b></td><td>1120</td><td>6.19</td><td>18.12</td><td class="pos">+11.93</td><td class="pos">+11.89</td></tr>
+<tr><td>testC 新波形 + 新信道</td><td>480</td><td>6.19</td><td>18.21</td><td class="pos">+12.02</td><td class="pos">+11.98</td></tr>
+</tbody></table>
+
+<p><b>看主效应（都控制在"新波形"这一行/列上）：</b></p>
+<ul>
+<li>波形从「见过」换成「新」，在<b>新信道</b>上：+11.93 → +12.02，变化 <b>+0.08 dB</b> —— <b>没有代价</b>。</li>
+<li>信道从「见过」换成「新」，在<b>新波形</b>上：+14.05 → +12.02，变化 <b>-2.03 dB</b>。</li>
+</ul>
+
+<figure><img src="figures/v3/figA_2x2.png" alt="图 A 2×2 泛化实验：三个测试集上模型与理想带通的对比"><figcaption>图 A 2×2 泛化实验：三个测试集上模型与理想带通的对比</figcaption></figure>
+
+<h2>四、关键分析：那 2 dB 差距其实不是"泛化"造成的</h2>
+<p>testA 与 testB 之间差 2.1 dB。如果直接下结论说"信道泛化有 2 dB 代价"，那是<b>错的</b> ——
+因为被抽作测试的 4 个信道（22–25）不是随机抽的，它们的时延扩展全部落在分布的高端：</p>
+<table>
+<thead><tr><th>分组</th><th>时延扩展 范围</th><th>中位</th></tr></thead>
+<tbody>
+<tr><td>训练信道 1–18</td><td>5.8 ~ 102.8 ms</td><td>70.1 ms</td></tr>
+<tr><td>验证信道 19–21</td><td>9.0 ~ 87.7 ms</td><td>74.1 ms</td></tr>
+<tr class="best"><td><b>测试信道 22–25</b></td><td><b>97.0 ~ 108.9 ms</b></td><td><b>102.0 ms</b></td></tr>
+</tbody></table>
+<p>也就是说，<b>测试信道全都是"最难"的那一类</b>。而上一轮已经查明：时延扩展越大，降噪增益越低
+（在 v2 的 25 个信道上，r = −0.862）。</p>
+
+<p><b>做法：</b>用 v2 的数据（25 个信道<b>全部见过</b>）拟合"增益 ~ 时延扩展"，
+得到 <code>增益 = 16.21 − 0.0378 × 时延(ms)</code>，r = −0.862。再外推到测试信道的时延：</p>
+<table>
+<thead><tr><th>测试信道时延 (ms)</th><th>97.0</th><th>100.0</th><th>108.9</th><th>104.0</th><th>平均</th></tr></thead>
+<tbody>
+<tr><td>用「见过的信道」拟合出的期望增益 (dB)</td><td>12.54</td><td>12.43</td><td>12.09</td><td>12.28</td>
+<td class="pos"><b>12.34</b></td></tr>
+</tbody></table>
+
+<div class="ok">
+<b>实测 vs 期望：</b><br>
+新信道 + 见波形（testB）实测 <b>+11.93 dB</b>，期望 12.34 dB → <b>差 -0.41 dB</b><br>
+新信道 + 新波形（testC）实测 <b>+12.02 dB</b>，期望 12.34 dB → <b>差 -0.32 dB</b><br>
+<b>结论：把信道难度控制住以后，换成没见过的信道，性能只掉 0.3 ~ 0.4 dB。</b>
+也就是说，之前看到的"2 dB 差距"里，<b>约 85% 来自测试信道本身更难，只有约 15% 来自"没见过"</b>。
+</div>
+<p class="note">严格来说，测试信道的时延（97–108.9 ms）略微超出训练信道范围（5.8–102.8 ms），
+属于轻度外推。这也说明模型在训练分布边缘仍然稳定。
+另外注意理想带通在 testB 上也从 12.63 降到 12.40 dB，独立印证了新信道本身更难。</p>
+
+<h2>五、消融实验：两个分支各贡献多少</h2>
+<p>完整模型把两个分支的残差用可学习的 softmax 权重融合。训练过程中权重一路演化：</p>
+<table>
+<thead><tr><th>轮次</th><th>1</th><th>2</th><th>3</th><th>5</th><th>10</th><th>15</th><th>25</th></tr></thead>
+<tbody>
+<tr><td>w_time（时域分支）</td><td>0.297</td><td>0.154</td><td>0.083</td><td>0.041</td><td>0.015</td><td>0.008</td><td class="pos">0.006</td></tr>
+<tr><td>w_freq（频域分支）</td><td>0.703</td><td>0.846</td><td>0.917</td><td>0.959</td><td>0.985</td><td>0.992</td><td class="pos">0.994</td></tr>
+</tbody></table>
+<p><b>时域分支的权重被训练到 0.006 —— 模型基本弃用了它。</b>这是一个需要如实报告的发现。</p>
+<table>
+<thead><tr><th>变体</th><th>参数量</th><th>testA</th><th>testB</th><th>testC</th><th>三者均值</th></tr></thead>
+<tbody>
+<tr class="best"><td>时域 + 频域（完整模型）</td><td>57,657</td><td>14.05</td><td>11.93</td><td>12.02</td><td>12.67</td></tr><tr><td>仅频域分支</td><td>1,910</td><td>13.98</td><td>11.71</td><td>11.72</td><td>12.47</td></tr><tr><td>仅时域分支</td><td>55,745</td><td>7.54</td><td>6.64</td><td>7.25</td><td>7.14</td></tr>
+</tbody></table>
+<p><b>读法：</b>仅频域分支的参数量只有 <b>1,910</b> —— 是完整模型 57,657 的 <b>1/30</b> ——
+却已经追到只差 <b>0.20 dB</b>；而仅时域分支（55,745 参数）差了 5.5 dB。
+也就是说，<b>这个模型本质上是一个频域掩码降噪器，时域分支几乎没起作用。</b></p>
+<div class="ok">
+<b>这是本次实验最有价值的发现：</b>一个 1,910 参数的频域掩码，就能拿到 57,657 参数模型的 98% 性能。
+对"轻量化模型"这个题目来说，这意味着<b>模型可以再缩小约 30 倍而几乎不掉性能</b>。
+下一步最值得做的不是"加大模型"，而是<b>沿频域分支做尺寸扫描</b>，找出精度-复杂度的最优拐点。
+</div>
+<figure><img src="figures/v3/figB_ablation.png" alt="图 B 消融实验：仅频域分支几乎追平完整模型，仅时域分支差距 5.5 dB"><figcaption>图 B 消融实验：仅频域分支几乎追平完整模型，仅时域分支差距 5.5 dB</figcaption></figure>
+<figure><img src="figures/v3/figC_curves.png" alt="图 C 三个变体的验证集收敛曲线"><figcaption>图 C 三个变体的验证集收敛曲线</figcaption></figure>
+
+<h2>六、和上一版（v2）的关系</h2>
+<table>
+<thead><tr><th></th><th>v2</th><th>v3 (testA)</th></tr></thead>
+<tbody>
+<tr><td>训练信道数</td><td>25（全部）</td><td>18</td></tr>
+<tr><td>训练样本</td><td>7,000</td><td>7,560</td></tr>
+<tr><td>测试波形</td><td>chirp 18–20（新）</td><td>chirp 18–20（新，逐点相同）</td></tr>
+<tr><td>输出 SNR</td><td>19.85 dB</td><td>20.24 dB</td></tr>
+<tr><td>SNR 提升</td><td>+13.66 dB</td><td class="pos">+14.05 dB</td></tr>
+</tbody></table>
+<p>在<b>完全相同的干净信号</b>上，v3 反而高 0.39 dB。这说明把训练信道从 25 个减到 18 个没有造成损失，
+v3 的 2×2 结论可以和 v2 的结论并列引用。</p>
+
+<h2>七、局限（写进报告要说明）</h2>
+<div class="warn">
+<ul>
+<li><b>只有 4 个测试信道</b>，统计上偏少，而且全在高时延端。要更稳的结论，建议再做几组不同的信道划分
+（例如随机抽 3 次，每次换 4–5 个信道）。</li>
+<li><b>测试信道是轻度外推</b>：时延 97–108.9 ms 略超出训练范围 5.8–102.8 ms。</li>
+<li><b>仍然是仿真数据</b>（RAM 仿真信道 + LFM 合成信号），不是实测。</li>
+<li><b>信道是静态的</b>：真实水声信道随时间变化，本实验没有测试时变信道。</li>
+<li>降采样 4 倍的前端设计带来的输入 SNR 抬高（+6 dB）依旧存在，部署时必须一致。</li>
+</ul>
+</div>
+
+<h2>八、下一步建议</h2>
+<ol>
+<li><b>沿频域分支做尺寸扫描（优先级最高）。</b>既然 1,910 参数就够用，应该扫一遍通道宽度
+（例如 0.5× / 1× / 2× / 4×），找出精度-复杂度拐点，这才是"轻量化"论文该有的核心结果。
+注意：单纯加大时域分支的 <code>hidden</code> 是没用的（它已经被弃用）。</li>
+<li><b>查清频域分支为何压倒性主导。</b>可能的原因：损失函数（L1 + 谱 L1）天然偏向频域解；
+或频域掩码本身是降噪的强归纳偏置。<b>若确认，可以直接删掉时域分支</b>，
+代码和显存都更省。</li>
+<li><b>多组信道划分重复实验</b>，把"信道泛化代价 ≈ 0.4 dB"这个结论做扎实。</li>
+<li><b>换损失</b>：加入 SI-SDR 损失项或多分辨率 STFT 损失。</li>
+<li><b>去掉零填充</b>（v2 报告 P2）：样本有效长度中位只有 6031/8000。</li>
+</ol>
+
+<h2>九、怎么复现</h2>
+<div class="card">
+<p>生成数据：<code>make_dataset_v3.m</code> → <code>D:/project/dataset_v3/</code>（10,600 样本，3 分 49 秒）</p>
+<p>训练与评测：<code>C:\Users\32213\PycharmProjects\project1\大创_v3.py</code></p>
+<ul>
+<li><code>python 大创_v3.py --tag full</code> — 完整模型（25 轮，49.6 分钟）</li>
+<li><code>python 大创_v3.py --tag freqonly --time 0</code> — 仅频域分支</li>
+<li><code>python 大创_v3.py --tag timeonly --freq 0</code> — 仅时域分支</li>
+</ul>
+<p>分析脚本：<code>analyze_v3.py</code>、<code>make_figs_v3.py</code>、<code>fix_chan_map.py</code></p>
+<p class="note">运行环境：<code>D:/python/python-3.11.4-embed-amd64/project1/Scripts/python.exe</code>（torch 2.8.0+cu128，RTX 4050）</p>
+</div>
+
+<hr>
+<p class="note">报告生成时间 2026-10-13 · 所有数字均在真实项目数据上实测，可复现</p>
+</div></body></html>

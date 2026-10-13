@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>大创.py 诊断报告（第二版）</title>
+<style>
+  :root{
+    --bg:#ffffff; --panel:#f7f8fa; --line:#e3e6ea; --ink:#1c1f23;
+    --muted:#5f6673; --red:#b3261e; --redbg:#fdecea;
+    --amber:#8a5a00; --amberbg:#fff6e5; --green:#1d6b45; --greenbg:#eaf6ef;
+    --blue:#1a4f8a; --bluebg:#eaf2fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Microsoft YaHei","PingFang SC","Segoe UI",system-ui,sans-serif;
+       font-size:14px;line-height:1.75;}
+  .wrap{max-width:1000px;margin:0 auto;padding:44px 32px 80px}
+  h1{font-size:23px;font-weight:600;margin:0 0 6px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+  h2{font-size:17px;font-weight:600;margin:38px 0 12px;padding-left:11px;border-left:4px solid var(--blue)}
+  h3{font-size:14px;font-weight:600;margin:22px 0 8px;color:#2c3138}
+  p{margin:8px 0}
+  .verdict{background:var(--redbg);border:1px solid #f3c9c4;border-left:5px solid var(--red);
+           border-radius:6px;padding:16px 20px;margin:18px 0 8px}
+  .verdict b{color:var(--red)}
+  table{width:100%;border-collapse:collapse;margin:12px 0 6px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel);font-weight:600;color:#333a44}
+  td code,code{background:#f1f3f6;border:1px solid #e4e7eb;border-radius:3px;
+       padding:1px 5px;font-family:Consolas,"Courier New",monospace;font-size:12.5px;color:#8a2a20}
+  ul,ol{margin:8px 0;padding-left:22px}
+  li{margin:5px 0}
+  .tag{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:10px;
+       border:1px solid;margin-right:6px;white-space:nowrap;line-height:1.7}
+  .t-red{color:var(--red);border-color:#e8b4af;background:var(--redbg)}
+  .t-amber{color:var(--amber);border-color:#e8d3a8;background:var(--amberbg)}
+  .t-green{color:var(--green);border-color:#b6dcc7;background:var(--greenbg)}
+  .t-blue{color:var(--blue);border-color:#b8d2ec;background:var(--bluebg)}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;margin:12px 0}
+  .num{font-family:Consolas,monospace;color:var(--red);font-weight:600}
+  .ok{font-family:Consolas,monospace;color:var(--green);font-weight:600}
+  .foot{margin-top:44px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>大创.py 诊断报告（第二版）</h1>
+<div class="sub">对象：<code>C:\Users\32213\PycharmProjects\project1\大创.py</code><br>
+方法：静态审查 + 对 <code>D:\project</code> 全部数据做二进制解析 + 用纯 Python 复刻该脚本的预处理与 SNR 指标，与 <code>output/</code> 存档结果逐位比对<br>
+本报告取代第一版（第一版针对的是 <code>D:\project\降噪模型\Complete_Denoised_Model.py</code>，分析对象有误）</div>
+
+<div class="verdict">
+<b>结论：</b>这一版比上一版进步很大 —— 变量名自适应、长度补齐、幅度归一化都修对了，而且我<b>完全复刻了它的预处理</b>（复刻结果与 <code>output/</code> 存档的相关系数 = <span class="ok">1.000000</span>），说明这确实是产出那批结果的代码。<br><br>
+但仍有 <b>1 个会直接崩溃的路径错误</b>、<b>1 个物理参数错误（采样率差 2.5 倍）</b>，以及一个没解决的根本问题：<b>所有样本共用同一个干净目标，模型可以靠"背波形"拿到好成绩，实验无法证明它真的会降噪。</b>
+</div>
+
+<h2>一、相对上一版已修复的问题</h2>
+<table>
+<tr><th>问题</th><th>上一版</th><th>本版</th><th>状态</th></tr>
+<tr><td>变量名硬编码</td><td>固定读 <code>['chirp_with_noise']</code>，tr/te 集会 KeyError</td>
+<td>取第一个非 <code>__</code> 开头的键，自适应</td><td><span class="tag t-green">已修</span></td></tr>
+<tr><td>长度不匹配</td><td>直接崩在 <code>LayerNorm</code></td>
+<td>统一补齐/截断到 18549</td><td><span class="tag t-green">已修（但方式有问题）</span></td></tr>
+<tr><td>幅度跨 6 个数量级</td><td>无处理</td>
+<td>按 99 分位归一化 + 截幅 ±1.5</td><td><span class="tag t-green">已修（但方式有问题）</span></td></tr>
+<tr><td>数据路径</td><td>指向 <code>E:/LNN_denoised/...</code></td>
+<td>改为 <code>D:/project/...</code></td><td><span class="tag t-amber">改对了盘符，但 train_dir 仍错</span></td></tr>
+<tr><td><code>snr_threshold=60 dB</code></td><td>永远不可能命中</td>
+<td>改为 7 dB，与存档结果自洽</td><td><span class="tag t-green">已修</span></td></tr>
+<tr><td>SNR 拼接的广播崩溃</td><td><code>np.tile(x, 0)</code> 返回空数组</td>
+<td>改用 <code>np.ceil</code></td><td><span class="tag t-green">已修</span></td></tr>
+<tr><td><code>ReduceLROnPlateau(verbose=)</code></td><td>新版 torch 会告警</td><td>已移除</td><td><span class="tag t-green">已修</span></td></tr>
+</table>
+
+<h2>二、仍然阻断运行：train_dir 路径不存在</h2>
+<div class="box">
+<code>CFG["train_dir"] = "D:/project/tr_signal/tr_signal"</code> —— <b>该目录不存在</b>。<br>
+实际数据在 <code>D:/project/tr_signal/</code>（下一级直接就是 6784 个 .mat 文件）。
+第一次 <code>os.listdir</code> 就会抛 <code>FileNotFoundError</code>。<br>
+（注意：上一轮我看到的是 <code>D:/project/tr_signal/tr_signal/</code> 和 <code>D:/project/tr_signal(1)/</code>，现在目录结构已经变了，<code>tr_signal(1)</code> 只剩一个 .zip。请确认你想用哪一份。）
+</div>
+
+<h3>顺带暴露的新问题：两批数据被混在同一个目录里</h3>
+<table>
+<tr><th>批次</th><th>文件名前缀</th><th>数量</th><th>长度</th><th>幅度 rms</th><th>唯一性</th></tr>
+<tr><td>4 月批</td><td><code>chirp_with_noise_</code>（有下划线）</td><td>132</td><td>9600</td><td>~1e-6</td><td><b>仅 19 个唯一</b>（85% 重复）</td></tr>
+<tr><td>5 月批</td><td><code>chrip_with_noise</code>（拼写 chrip，无下划线）</td><td>6652</td><td>18549</td><td>5e-13 ~ 1e-6</td><td>全部唯一</td></tr>
+</table>
+<p>而 <code>sort_files_numerically</code> 的正则 <code>r"_(\d+)\.mat$"</code> <b>只匹配 4 月批</b>；
+5 月批 6652 个文件全部返回 <code>float('inf')</code>，排序退化成 <code>os.listdir</code> 的任意顺序。
+两批长度差近一倍、来源不同的数据会被混进同一个 <code>DataLoader</code>。建议只保留 5 月批。</p>
+
+<h2>三、物理参数错误：<code>fs_chirp = 24000</code></h2>
+<p>我用希尔伯特变换提取了 <code>chirp_signal.mat</code> 的瞬时频率，它是标准线性扫频：</p>
+<table>
+<tr><th>假设采样率</th><th>起始频率</th><th>结束频率</th><th>总时长</th><th>与 RAM 信道仿真频带（798–1500 Hz）对比</th></tr>
+<tr><td>9600 Hz</td><td>828 Hz</td><td>1412 Hz</td><td>1.000 s</td><td><b>吻合</b></td></tr>
+<tr><td>24000 Hz（代码里的值）</td><td>2070 Hz</td><td>3390 Hz</td><td>0.400 s</td><td>远超换能器频带，不可能</td></tr>
+</table>
+<div class="box">
+归一化扫频速率实测为 <span class="num">0.08625 → 0.14711</span> cycles/sample（线性）。
+只有 <b>fs ≈ 9600 Hz</b> 时，扫频区间才落在 <code>信道产生/untitled2.m</code> 里设定的 798–1500 Hz 上。<br><br>
+<b>后果：</b><code>intervals = [(0.10, 0.30, 0.50, 0.70)]</code> 在 fs=24000 下取采样点 2400–7200 和 12000–16800。
+这两个区间<b>碰巧</b>一个落在 chirp 中段、一个落在 chirp 之外（噪声区），所以结果看着正常 —— 但这是巧合。
+一旦按真实 fs=9600 修正，同样的时间区间会跳到采样点 960–2880 和 4800–6720，选中的是完全不同的位置。
+</div>
+
+<h2>四、SNR 指标：存在 <span class="num">+6 dB</span> 的系统性正偏差</h2>
+<p><code>calculate_snr_intervals</code> 用「信号段减去另一个时段的噪声副本」来估纯信号功率。问题是：信号段的噪声和噪声段的噪声<b>是两次独立的实现</b>，相减后功率不是 P<sub>s</sub>，而是</p>
+<p style="text-align:center;font-family:Consolas,monospace;color:#333a40;">E[(s + n₁ − n₂)²] = P<sub>s</sub> + 2P<sub>n</sub> &nbsp;→&nbsp; 估值 = 10·log₁₀(P<sub>s</sub>/P<sub>n</sub> + 2)</p>
+<p>也就是说，<b>即使信号功率为零，这个指标也会报出 10·log₁₀(2) = 3.01 dB</b> —— 存在一个硬地板。</p>
+
+<table>
+<tr><th>指标</th><th>代码自报</th><th>真实值（以 clean 为参考）</th><th>偏差</th></tr>
+<tr><td>输入 SNR</td><td>5.14 dB</td><td><b>−1.21 dB</b></td><td class="num">+6.34 dB</td></tr>
+<tr><td>输出 SNR</td><td>18.65 dB</td><td><b>12.60 dB</b></td><td class="num">+6.04 dB</td></tr>
+<tr><td>SNR 增益</td><td>13.51 dB</td><td>13.81 dB</td><td>−0.30 dB</td></tr>
+</table>
+<p><b>好消息：</b>由于偏差在输入/输出上几乎相等，<u>增益数字（≈13.5 dB）是基本可信的</u>。<br>
+<b>坏消息：</b>绝对 SNR 值全部虚高 6 dB。如果论文里写"输入 SNR 5.79 dB、输出 18.26 dB"，审稿人按 clean 真值一算就会对不上。
+另外 7 dB 的门限是加在这个带偏指标上的，等价于真实的 ~1 dB 门限，几乎任何输出都能通过 —— 所谓"智能判断是否满足要求"实际上形同虚设。</p>
+
+<h2>五、根本问题仍未解决：单一固定目标</h2>
+<div class="box">
+<code>DenoiseDataset.__init__</code> 里 <code>self.clean_signal</code> 是<b>同一个 chirp</b>（9600 点 + 8949 点零填充），
+对全部 6784 个样本反复使用。训练集里<b>只有一个干净波形</b>。<br><br>
+网络因此只需学会"输出这个 chirp"，而不需要学会"去噪"。
+我在 27 个存档结果上复算：<br>
+· 27 个<b>输出</b>两两相关系数 = <span class="num">0.977</span><br>
+· 27 个<b>输入</b>两两相关系数 = <span class="num">0.026</span><br><br>
+输入彼此几乎不相关，输出却几乎一模一样 —— 因为目标本来就只有一个。
+<b>这个实验设计没有能力区分"模型真的会降噪"和"模型背下了这个波形"</b>，两者会给出同样漂亮的数字。
+</div>
+<p>这是本工作最需要优先解决的问题。只要目标信号仍然唯一，无论把网络改得多好、把指标算得多准，结论都站不住。</p>
+
+<h2>六、预处理里两个"修对了方向但引入了新问题"的地方</h2>
+
+<h3>1. 逐样本 99 分位归一化，会放大低信噪比样本的噪声</h3>
+<p>对每个样本<b>各自</b>除以自己的 99 分位幅度，意味着：</p>
+<ul>
+<li>输入的绝对幅度信息被完全抹掉，输入与目标之间的<b>相对电平关系不复存在</b>；</li>
+<li>那些 rms 只有 5e-13（信号已被信道衰减到噪声以下）的样本，归一化后噪声被<b>放大到 ±1</b>，而目标仍是干净的 ±1 chirp ——
+等于在教模型"从纯噪声里凭空生成 chirp"。这正是幻觉式生成器的训练配方。</li>
+</ul>
+<p>建议：按<b>整批统计</b>做统一的尺度变换，或直接用真实 SNR 分层，而不是逐样本自归一化。</p>
+
+<h3>2. 长度补齐用"复制信号尾巴"，会制造伪信号</h3>
+<p><code>noise_padding = noisy_signal[-pad_len:]</code> 把信号最后 <code>pad_len</code> 个点原样复制到末尾。
+对 4 月批（9600 → 18549）要复制 8949 点，等于把信号后 93% 又贴了一遍，产生明显的周期性和拼接不连续。
+对 te_signal（17599 → 18549）复制 950 点，影响较小。</p>
+
+<h2>七、仍然存在的模型结构 / 工程问题</h2>
+<table>
+<tr><th>位置</th><th>问题</th></tr>
+<tr><td><code>input_norm = LayerNorm(18549)</code></td>
+<td>单个 LayerNorm 占 <span class="num">37,098</span> 参数，是全模型 <span class="num">99,005</span> 参数的 <b>37.5%</b>。
+一个"轻量化"模型近四成参数花在全长度归一化上，并且把模型锁死在固定输入长度。建议改为逐帧/逐通道归一化，或直接去掉。</td></tr>
+<tr><td><code>final_fusion</code> 的 <code>tanh</code></td>
+<td>输出被硬限幅在 (−1, 1)。当前目标经归一化后幅值 ≈ ±1.0004，勉强够用；但一旦目标波形的波峰因数变化，模型就<b>永远拟合不了</b>。
+同时这个 tanh 把前面 <code>residual</code> 残差路径整个压平，"保持信号主体结构"的设计失效。</td></tr>
+<tr><td><code>_init_weights</code></td>
+<td>在 <code>__init__</code> 末尾对所有 <code>Conv1d</code> 做 kaiming 初始化，会<b>覆盖</b>前面刚设好的
+<code>signal_preservation.weight = 1.0 / bias = 0.0</code>。那段恒等初始化是死代码。</td></tr>
+<tr><td>微调分支</td>
+<td><code>max_finetune_iterations = 2</code> 时循环最多走到 <code>iteration=2</code>，而微调只在 <code>iteration &lt; max</code> 时调用，
+即只会传入 <code>iteration_num=1</code>。<b><code>iteration_num==2</code> 和 <code>else</code> 两个分支永远不会执行</b>，是死代码。</td></tr>
+<tr><td>频域分支</td>
+<td>噪声估计 mask 与幅度 mask 两级 Sigmoid <b>级联相乘</b>，过度压制；相位修正系数 <code>0.1</code> 为硬编码常数。</td></tr>
+<tr><td>损失函数</td>
+<td><code>noise_reduction</code> 比值项与主 L1 项优化方向相同，属冗余；<code>smoothness_loss</code> 建议改为对残差 <code>(denoised − noisy)</code> 的 L1，更贴合降噪目标。</td></tr>
+<tr><td>训练循环</td>
+<td><code>except Exception: continue</code> 吞掉一切异常，<code>avg_loss</code> 可能只由极少数 batch 算出；<code>torch.save(model.cpu()...)</code> 后 <code>model.to(device)</code> 每次刷新最佳模型都要搬两趟；无随机种子，<code>np.random.normal</code> 补齐不可复现。</td></tr>
+<tr><td>数据加载</td>
+<td><code>__getitem__</code> 每次 <code>sio.loadmat</code> 全量读盘，6784 个文件 × 100 epoch，无缓存、无预处理。</td></tr>
+</table>
+
+<h2>八、修改优先级</h2>
+<ol>
+<li><span class="tag t-red">P0</span><b>修 <code>train_dir</code></b>：改成 <code>D:/project/tr_signal</code>，并只保留 5 月批（6652 个 18549 点的文件），删掉 4 月批的 132 个重复文件。</li>
+<li><span class="tag t-red">P0</span><b>让目标信号多样化</b>：用不同中心频率 / 调频斜率 / 时延 / 初相的 chirp 生成训练集，并把测试目标与训练目标严格分离。
+不解决这一条，后面所有改进都没有意义。</li>
+<li><span class="tag t-red">P0</span><b>统一 <code>fs</code></b>：确认数据生成时的真实采样率（实测指向 9600 Hz），并据此重设 <code>fs_chirp</code> 和 <code>intervals</code>。</li>
+<li><span class="tag t-amber">P1</span><b>换掉 SNR 评估</b>：直接用 <code>10·log₁₀(‖s‖²/‖ŝ−s‖²)</code>，参考真值 <code>s</code>；补 SI-SDR / STOI 等客观指标。</li>
+<li><span class="tag t-amber">P1</span><b>改归一化</b>：改为整批统一尺度或按真实 SNR 分层，去掉逐样本自归一化与 <code>np.clip</code> 硬截幅。</li>
+<li><span class="tag t-amber">P1</span><b>改补齐方式</b>：用噪声段填充而非复制信号尾部；更彻底的做法是统一样本长度，取消补齐逻辑。</li>
+<li><span class="tag t-green">P2</span>去掉 <code>final_fusion</code> 的 tanh；修复 <code>_init_weights</code> 覆盖恒等初始化；合并两级 mask；精简损失函数；去掉 <code>except: continue</code>；固定随机种子。</li>
+</ol>
+
+<div class="foot">
+所有数值均通过对 <code>D:\project</code> 下 .mat 文件的二进制解析与纯 Python 复算得到；
+预处理复刻结果与 <code>output/final_denoised_signal_1.mat</code> 的相关系数为 1.000000，
+自报 SNR 与 <code>output/iterative_transfer_learning_results.txt</code> 完全一致，可逐条复现。
+</div>
+
+</div>
+</body>
+</html>
