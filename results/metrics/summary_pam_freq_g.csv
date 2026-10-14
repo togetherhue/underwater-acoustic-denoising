@@ -1,0 +1,3 @@
+tag,testset,n,params,fch,arch_time,arch_freq,w_time,epochs,seed,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+pam_freq_g,testA,1080,5910,2.0,0,1,nan,15,20261013,-4.2269,16.5953,-4.2364,16.5001,-0.6449,12.5798,14.8112,14.0903,25.6641,14.4274,0.1695,0.1560
+pam_freq_g,testC,240,5910,2.0,0,1,nan,15,20261013,-4.4328,14.3653,-4.4379,14.2192,-0.7169,10.0256,12.5374,11.7139,23.2994,11.9042,0.1576,0.1551

@@ -147,6 +147,46 @@
 **用 LFM 训练不构成迁移到 HFM 的障碍。**
 混合训练是稳妥选择：模型大小不变（仍 5,910 参数），四个测试集上全部取得最好成绩。
 
+### 7. 脉冲噪声（导师方案）· 阶段0：现有模型的基线
+
+导师指出「实测信号的脉冲噪声比较大」，要求把噪声模型改成
+**`y = s + v + i`**（v 为 α 稳定分布背景噪声，i 为突发干扰），并给出了 PAM-Net 方案。
+阶段0 **不改网络、不改损失**，只换数据与指标，先拿到干净基线。
+
+**噪声模型**：`stblrnd.m`（Chambers-Mallows-Stuck 法生成 α 稳定分布，α=1.5、β=0，
+经特征函数反推验证误差 ≤0.06%）+ `gen_burst.m`（泊松到达、随机幅度/时长，
+四种波形覆盖"尖峰/脉冲/突发边缘"，同时输出干扰位置掩码）。
+**噪声强度用 75% 分位数匹配**（α<2 时方差无穷，无法用功率定义 SNR）。
+两套数据（α稳定 / 高斯）的**突发干扰实现完全相同**，构成配对对照。
+
+| 模型 | 参数 | testA 输入 | testA 输出 | 帧增益中位 | 干净帧增益 | 干扰帧增益 | 干扰帧最差 |
+|---|---|---|---|---|---|---|---|
+| **α稳定+脉冲 · 纯频域** | **5,910** | −4.61 | **+12.51** | **15.06** | **14.13** | **25.09** | **13.54** |
+| α稳定+脉冲 · 时域+频域 | 57,657 | −4.61 | +11.79 | 14.55 | 13.59 | 23.89 | 12.77 |
+| 高斯+脉冲 · 纯频域 | 5,910 | −0.64 | +16.60 | 14.81 | 14.09 | 25.66 | 14.43 |
+
+**三个结论**：
+
+1. **现有模型在脉冲噪声下仍然有效**。干扰帧增益（25.09 dB）**高于**干净帧（14.13 dB）——
+   脉冲幅度大（20×rms），压掉它们的 dB 收益自然高。
+2. **α 稳定背景没有让降噪变难**。帧增益几乎不变（干净帧 +0.04 dB、干扰帧 −0.57 dB）；
+   输出 SNR 差的 −4.08 dB **全部来自输入变差**（α稳定背景 rms 是信号的 2.2~2.6 倍，
+   高斯只有 0.67 倍，重尾贡献了大量能量）。
+3. **时域分支依然没用（原猜想被否定）**。高斯下 `w_time` 衰减到 0.006，
+   脉冲噪声下放大到 **0.0410**（约 7 倍），但仍只占 4% 权重，且
+   **加上它所有指标全面变差**（干扰帧 −1.20 dB）。
+   **5,910 参数纯频域模型依然胜过 57,657 参数完整模型。**
+
+> **对阶段1 的指导**：PAM-Net 的时域分支**不能照搬现有实现**。现有的是"整段残差估计器"，
+> 对局部脉冲没有归纳偏置；方案要的是「短时分支识别尖峰/脉冲边缘」+ 逐点 `p_n`
+> 脉冲置信度，形式不同。另外 α 稳定噪声下现有 L1+谱L1 损失**训练不稳定**
+> （末 3 轮验证损失 0.41→0.63、验证 SNR 18.35→14.71），老师要求的 Huber 损失正是对策。
+
+**指标问题**：全局 SNR 在脉冲噪声下会判错——自检显示"漏掉 1 个脉冲"的全局 SNR
+（10.16）反而**高于**"好模型"（9.02）。因此主指标改用
+**逐帧降噪增益 `frmgain` = 10log10(该帧输入噪声/输出噪声)**，并分解为
+干净帧 / 干扰帧 / 干扰帧最差。同一组结果三种口径从 11.89 到 20.48 dB，相差 8.6 dB。
+
 ---
 
 ## 二、目录结构
@@ -160,8 +200,9 @@ docs/                            分析报告（HTML，图片外链到 docs/figu
   05_generalization_experiment.html  2×2 泛化实验
   06_generalization_and_lightweight.html  泛化 + 轻量化
   07_channel_generalization_3fold.html    信道泛化的 3 折交叉验证
-  08_waveform_modulation_generalization.html  波形调制泛化 LFM vs HFM（最新）
-  figures/v2/  figures/v3/  figures/folds/  figures/wave/
+  08_waveform_modulation_generalization.html  波形调制泛化 LFM vs HFM
+  09_pulse_noise_stage0.html              脉冲噪声阶段0（最新）
+  figures/v2/  figures/v3/  figures/folds/  figures/wave/  figures/pam/
 
 code/
   matlab/          数据生成与验证脚本
@@ -170,6 +211,10 @@ code/
     make_dataset_gen.m    通用数据集生成器（任意 chirp/信道组合）
     make_folds.m          生成 3 折分层交叉验证数据集（按时延扩展分层）
     make_dataset_wave.m   生成 LFM / HFM 配对数据集（波形泛化实验）
+    make_dataset_pam.m    生成 α稳定+突发干扰数据集（导师方案）
+    stblrnd.m             α 稳定分布随机数（Chambers-Mallows-Stuck 法）
+    gen_burst.m           突发脉冲干扰生成器（含干扰位置掩码）
+    test_*.m              噪声模型验证脚本
     gen_chirp.m           LFM/HFM 扫频信号生成器
     gen_ch.m              信道冲激响应生成（修正版）
     fix_channel_gen.m     修正信道生成的通带错位问题
@@ -180,6 +225,7 @@ code/
     train_v3.py      训练 + 2×2 评估 + 消融 + 尺寸扫描（支持 --fch / --time / --freq）
     train_fold.py    3 折留出实验训练脚本（seen / unseen 同波形对比）
     train_wave.py    波形泛化训练脚本（支持多目录混合训练、--seed）
+    train_pam.py     脉冲噪声训练脚本（带干扰掩码、稳健指标）
   analysis/         分析与出图脚本（纯 Python，含自写 .mat 解析器）
     mat_probe.py          纯 Python MATLAB v5 .mat 解析器（无 numpy 依赖）
     compare_baseline.py   与经典降噪方法对比
@@ -193,6 +239,11 @@ code/
     analyze_wave.py       波形泛化汇总 + 经典基线 + 出图
     verify_wave.py        波形实验独立复算 + 配对性验证
     make_fig_wave_spec.py LFM/HFM 时频图对比
+    pam_metrics.py        脉冲噪声下的稳健评估指标（逐帧降噪增益）
+    verify_pam_metrics.py 指标行为验证（证明全局 SNR 会判错）
+    verify_pam_dataset.py 数据集配对性/脉冲性验证
+    analyze_pam.py        阶段0 结果汇总与出图
+    verify_pam_result.py  阶段0 独立复算
     make_figs*.py / build_report*.py   出图与报告生成
   exploratory/      探索性脚本（含一条被否决的"抢救旧信道"路线）
 
@@ -207,6 +258,7 @@ models/
   model_lite_fold{1,2,3}.pth   3 折实验的三个模型（各 5,910 参数）
   model_{lfmonly,hfmonly,mixed}.pth        波形泛化三个模型（各 5,910 参数）
   model_lfmonly_s{2,3}.pth                 额外随机种子
+  model_pam_{freq,full,freq_g}.pth         脉冲噪声阶段0 三个模型
 ```
 
 ---
@@ -274,7 +326,21 @@ models/
    python code/analysis/make_fig_wave_spec.py # 时频图
    ```
 
-6. **分析出图**：按 `code/analysis/` 中脚本头部的说明运行（路径为绝对路径，需按本机调整）。
+6. **脉冲噪声（导师方案）阶段0**
+   ```matlab
+   make_dataset_pam('alphastable','D:/project/dataset_pam/alphastable',1.5);
+   make_dataset_pam('gauss',      'D:/project/dataset_pam/gauss',1.5);
+   ```
+   ```bash
+   D=D:/project/dataset_pam
+   python code/python/train_pam.py --tag pam_freq   --data $D/alphastable --epochs 15 --time 0 --fch 2.0
+   python code/python/train_pam.py --tag pam_full   --data $D/alphastable --epochs 15 --time 1 --freq 1 --fch 1.0
+   python code/python/train_pam.py --tag pam_freq_g --data $D/gauss      --epochs 15 --time 0 --fch 2.0
+   python code/analysis/analyze_pam.py        # 汇总 + 出图
+   python code/analysis/verify_pam_result.py  # 独立复算
+   ```
+
+7. **分析出图**：按 `code/analysis/` 中脚本头部的说明运行（路径为绝对路径，需按本机调整）。
 
 ---
 
@@ -303,6 +369,9 @@ models/
 ## 五、局限（如实记录）
 
 1. **全部是仿真数据**：RAM 仿真信道 + 合成扫频信号，**不是实测**。
+   脉冲噪声部分（第 7 节）的 α 稳定背景与突发干扰也都是合成的，
+   α 只取了一个值（1.5）、突发幅度/时长范围是设定的，没有实测统计支撑。
+   老师提到正在整理实测信号，届时需重新验证。
    关于"任务说 HFM、数据是 LFM"这个矛盾，第 6 节的配对实验证明
    **LFM 训练不构成迁移到 HFM 的障碍**（代价 ≤0.2 dB），但 HFM 数据仍是合成的，
    **不能替代实测验证** —— 真实 HFM 的噪声统计、多普勒、时变信道都不在这里。
@@ -314,7 +383,10 @@ models/
 4. **信道是静态的**，未测试时变信道。
 5. **波形泛化实验只覆盖同一张 chirp 参数表**：LFM 与 HFM 的中心频率、带宽、时宽、包络
    全部相同，只有调频规律不同。真实 HFM 信号的参数分布可能不同，跨频带泛化未验证。
-6. **两个前端处理需要交代**：
+6. **脉冲经多径信道后的形态未单独分析**：第 7 节把突发干扰直接叠加在信道**输出**上；
+   若干扰发生在信道**之前**，经多径会展宽成一串回声突发，难度完全不同。该场景未测。
+   另外降采样 4 倍对脉冲噪声的增益远小于对高斯噪声的 +6.19 dB，但未做定量分解。
+7. **两个前端处理需要交代**：
    - 样本中位有效长度只有 6,031 / 8,000 点，**约 24.6% 是零填充**；
    - 降采样 4 倍会滤掉带外噪声，使输入 SNR 从数据集的 0 dB 抬到 6.19 dB。
      这是合理的前端设计（信号只占 798–1500 Hz），但**部署到实测数据时必须做同样的降采样**。
