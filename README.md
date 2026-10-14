@@ -115,6 +115,38 @@
 时延扩展 5.8 ms 的信道增益 +14.62 dB，104–109 ms 的信道只有 +10.83 ~ +12.33 dB。
 即**多径越强，降噪越难**（信号能量在时频面上越分散，与噪声重叠越多）。
 
+### 6. 波形调制泛化：LFM vs HFM
+
+指导老师的 README 写明目标是「**实测 HFM 信号**」（双曲调频），但既有全部数据集都用
+**LFM**（线性调频）生成 —— 这是一个一直没正面处理的矛盾。本实验用**同一张 chirp 参数表、
+同一批信道、同一份噪声实现**分别以 LFM / HFM 生成两套数据，构成**严格配对比较**：
+
+| 方法 | LFM · testA | HFM · testA | LFM · testC | HFM · testC |
+|---|---|---|---|---|
+| 理想带通 798–1500 Hz | +6.44 | +6.44 | +6.43 | +6.43 |
+| 谱减法（盲噪声估计） | +7.74 | +7.75 | +7.53 | +7.53 |
+| 仅 LFM 训练 | +13.89 | **+13.73** | +11.81 | **+11.90** |
+| 仅 HFM 训练 | +13.79 | +13.79 | +11.69 | +11.84 |
+| **LFM + HFM 混合** | **+14.09** | **+14.01** | **+12.03** | **+12.14** |
+
+**调制类型代价（HFM − LFM）**：
+
+| 方法 | testA | testC |
+|---|---|---|
+| 理想带通（调制无关参照） | −0.00 | −0.00 |
+| 仅 LFM 训练（3 个种子均值 ± 标准差） | **−0.178 ± 0.015** | **+0.080 ± 0.016** |
+| 仅 HFM 训练 | −0.01 | +0.15 |
+| LFM + HFM 混合 | −0.09 | +0.11 |
+
+**配对性已实测验证**：LFM 与 HFM 的 `noisy − clean`（噪声实现）最大绝对差 **5e−14**
+（浮点舍入量级），而 `clean_signal` 差 7~11 —— 只有调频规律不同。
+
+**结论**：模型对调频规律基本不敏感。代价 0.1~0.2 dB 占 ~14 dB 总增益的 **1.3%**，
+且方向在 testA / testC 上相反（不存在「HFM 整体更难」的趋势）。
+用 3 个随机种子确认了它不是训练噪声（种子间标准差只有 0.015 dB）。
+**用 LFM 训练不构成迁移到 HFM 的障碍。**
+混合训练是稳妥选择：模型大小不变（仍 5,910 参数），四个测试集上全部取得最好成绩。
+
 ---
 
 ## 二、目录结构
@@ -127,8 +159,9 @@ docs/                            分析报告（HTML，图片外链到 docs/figu
   04_training_result_v2.html         训练结果分析（含经典方法对比、方差分解）
   05_generalization_experiment.html  2×2 泛化实验
   06_generalization_and_lightweight.html  泛化 + 轻量化
-  07_channel_generalization_3fold.html    信道泛化的 3 折交叉验证（最新）
-  figures/v2/  figures/v3/  figures/folds/
+  07_channel_generalization_3fold.html    信道泛化的 3 折交叉验证
+  08_waveform_modulation_generalization.html  波形调制泛化 LFM vs HFM（最新）
+  figures/v2/  figures/v3/  figures/folds/  figures/wave/
 
 code/
   matlab/          数据生成与验证脚本
@@ -136,6 +169,7 @@ code/
     make_dataset_v3.m     生成 2×2 因子数据集（v3，按 chirp + 信道分组）
     make_dataset_gen.m    通用数据集生成器（任意 chirp/信道组合）
     make_folds.m          生成 3 折分层交叉验证数据集（按时延扩展分层）
+    make_dataset_wave.m   生成 LFM / HFM 配对数据集（波形泛化实验）
     gen_chirp.m           LFM/HFM 扫频信号生成器
     gen_ch.m              信道冲激响应生成（修正版）
     fix_channel_gen.m     修正信道生成的通带错位问题
@@ -145,6 +179,7 @@ code/
     train_v2.py      训练脚本（v2 数据集）
     train_v3.py      训练 + 2×2 评估 + 消融 + 尺寸扫描（支持 --fch / --time / --freq）
     train_fold.py    3 折留出实验训练脚本（seen / unseen 同波形对比）
+    train_wave.py    波形泛化训练脚本（支持多目录混合训练、--seed）
   analysis/         分析与出图脚本（纯 Python，含自写 .mat 解析器）
     mat_probe.py          纯 Python MATLAB v5 .mat 解析器（无 numpy 依赖）
     compare_baseline.py   与经典降噪方法对比
@@ -155,18 +190,23 @@ code/
     analyze_folds.py      3 折结果汇总与出图
     verify_folds.py       3 折结果的独立复算（自行实现管线与指标）
     make_fig_folds2.py    逐信道增益 vs 时延扩展散点图
+    analyze_wave.py       波形泛化汇总 + 经典基线 + 出图
+    verify_wave.py        波形实验独立复算 + 配对性验证
+    make_fig_wave_spec.py LFM/HFM 时频图对比
     make_figs*.py / build_report*.py   出图与报告生成
   exploratory/      探索性脚本（含一条被否决的"抢救旧信道"路线）
 
 results/
   metrics/   逐样本结果 CSV（snr_in, snr_out, sisdr_in, sisdr_out）与汇总
   logs/      逐轮训练日志
-  data/      分析中间结果（信道映射、扫描汇总 JSON、3 折汇总）
+  data/      分析中间结果（信道映射、扫描汇总 JSON、3 折汇总、波形泛化汇总）
 
 models/
   model_fch2.pth        推荐的轻量模型（5,910 参数）
   model_full.pth        完整模型（57,657 参数）
   model_lite_fold{1,2,3}.pth   3 折实验的三个模型（各 5,910 参数）
+  model_{lfmonly,hfmonly,mixed}.pth        波形泛化三个模型（各 5,910 参数）
+  model_lfmonly_s{2,3}.pth                 额外随机种子
 ```
 
 ---
@@ -212,7 +252,29 @@ models/
    python code/analysis/verify_folds.py      # 独立复算（可选）
    ```
 
-5. **分析出图**：按 `code/analysis/` 中脚本头部的说明运行（路径为绝对路径，需按本机调整）。
+5. **波形调制泛化（LFM vs HFM）**
+   ```matlab
+   make_dataset_wave         % LFM / HFM 配对数据集 -> D:/project/dataset_wave/
+   ```
+   ```bash
+   W=D:/project/dataset_wave
+   python code/python/train_wave.py --tag lfmonly --train $W/LFM/train --val $W/LFM/val \
+       --epochs 15 --time 0 --fch 2.0
+   python code/python/train_wave.py --tag hfmonly --train $W/HFM/train --val $W/HFM/val \
+       --epochs 15 --time 0 --fch 2.0
+   python code/python/train_wave.py --tag mixed \
+       --train $W/LFM/train,$W/HFM/train --val $W/LFM/val,$W/HFM/val \
+       --epochs 15 --time 0 --fch 2.0
+   for s in 2 3; do   # 额外随机种子（用于量化运行间波动）
+     python code/python/train_wave.py --tag lfmonly_s$s --train $W/LFM/train \
+         --val $W/LFM/val --epochs 15 --time 0 --fch 2.0 --seed $s
+   done
+   python code/analysis/analyze_wave.py       # 汇总 + 经典基线 + 出图
+   python code/analysis/verify_wave.py        # 独立复算 + 配对性验证
+   python code/analysis/make_fig_wave_spec.py # 时频图
+   ```
+
+6. **分析出图**：按 `code/analysis/` 中脚本头部的说明运行（路径为绝对路径，需按本机调整）。
 
 ---
 
@@ -221,10 +283,14 @@ models/
 **本仓库不包含数据集**（原始数据约 5 GB）。数据由上面的 MATLAB 脚本生成，来源是：
 
 ```
-干净信号  = LFM 线性调频（798 → 1500 Hz，0.6–1.0 s，fs = 9600 Hz）
+干净信号  = 扫频信号（798 → 1500 Hz，0.6–1.0 s，fs = 9600 Hz）
+            调频规律 LFM（线性）或 HFM（双曲），由 gen_chirp.m 的 modtype 控制
 含噪信号  = conv(重采样到 24000 Hz 的 chirp, RAM 仿真信道) + 高斯噪声
 样本长度  = 22,399 ~ 31,999 点（24000 Hz），训练时降采样 4 倍到 6000 Hz
 ```
+
+波形泛化实验（`dataset_wave/`）用**同一张 chirp 参数表、同一批信道、同一份噪声实现**
+分别生成 LFM 与 HFM 两套数据，构成严格配对比较。
 
 每个 `.mat` 样本包含：`noisy_signal`、`clean_signal`、`true_snr`、`chirp_id`、`chan_id`。
 
@@ -236,15 +302,19 @@ models/
 
 ## 五、局限（如实记录）
 
-1. **全部是仿真数据**：RAM 仿真信道 + LFM 合成信号，**不是实测**。
-   指导老师文档中提到的"实测 HFM 信号"尚未验证（当前信号实测为 LFM，不是 HFM）。
+1. **全部是仿真数据**：RAM 仿真信道 + 合成扫频信号，**不是实测**。
+   关于"任务说 HFM、数据是 LFM"这个矛盾，第 6 节的配对实验证明
+   **LFM 训练不构成迁移到 HFM 的障碍**（代价 ≤0.2 dB），但 HFM 数据仍是合成的，
+   **不能替代实测验证** —— 真实 HFM 的噪声统计、多普勒、时变信道都不在这里。
 2. **信道数量仍然偏少**：只有 25 个（来自同一 RAM 仿真参数空间）。
    3 折交叉验证已把它用到极限（每折留出 8–9 个），但信道的物理多样性受限于仿真参数组合。
    结论成立的前提是**部署信道与训练信道来自同一分布**，跨分布的泛化未验证。
 3. **尺寸扫描与 3 折实验每个档位只跑一个随机种子**（3 折之间的差异已反映主要不确定性，
-   但训练随机性未单独分离）。
+   但训练随机性未单独分离）。波形泛化实验补了 3 个种子（标准差 0.015 dB）。
 4. **信道是静态的**，未测试时变信道。
-5. **两个前端处理需要交代**：
+5. **波形泛化实验只覆盖同一张 chirp 参数表**：LFM 与 HFM 的中心频率、带宽、时宽、包络
+   全部相同，只有调频规律不同。真实 HFM 信号的参数分布可能不同，跨频带泛化未验证。
+6. **两个前端处理需要交代**：
    - 样本中位有效长度只有 6,031 / 8,000 点，**约 24.6% 是零填充**；
    - 降采样 4 倍会滤掉带外噪声，使输入 SNR 从数据集的 0 dB 抬到 6.19 dB。
      这是合理的前端设计（信号只占 798–1500 Hz），但**部署到实测数据时必须做同样的降采样**。

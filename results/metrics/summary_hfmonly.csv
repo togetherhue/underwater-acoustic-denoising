@@ -1,0 +1,5 @@
+tag,testset,n,snr_in,snr_out,snr_gain,sisdr_in,sisdr_out,sisdr_gain,params,fch,arch_time,arch_freq,train_dirs
+hfmonly,LFM_testA,1080,6.1819,19.9765,13.7946,,,13.7549,5910,2.0,0,1,D:/project/dataset_wave/HFM/train
+hfmonly,LFM_testC,240,6.1787,17.8728,11.6941,,,11.6404,5910,2.0,0,1,D:/project/dataset_wave/HFM/train
+hfmonly,HFM_testA,1080,6.1826,19.9717,13.7891,,,13.7473,5910,2.0,0,1,D:/project/dataset_wave/HFM/train
+hfmonly,HFM_testC,240,6.1793,18.0191,11.8398,,,11.7962,5910,2.0,0,1,D:/project/dataset_wave/HFM/train
