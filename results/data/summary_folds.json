@@ -1,0 +1,449 @@
+{
+ "folds": [
+  {
+   "fold": 1,
+   "n_seen": 840,
+   "n_unseen": 540,
+   "gain_seen": 13.2185,
+   "gain_unseen": 13.2233,
+   "penalty": 0.0048,
+   "sisdr_penalty": -0.0001695985437688563
+  },
+  {
+   "fold": 2,
+   "n_seen": 900,
+   "n_unseen": 480,
+   "gain_seen": 13.4798,
+   "gain_unseen": 13.1954,
+   "penalty": -0.2844,
+   "sisdr_penalty": -0.2826915537731516
+  },
+  {
+   "fold": 3,
+   "n_seen": 900,
+   "n_unseen": 480,
+   "gain_seen": 13.2934,
+   "gain_unseen": 13.4219,
+   "penalty": 0.1284,
+   "sisdr_penalty": 0.11357278810607063
+  }
+ ],
+ "mean": -0.05039999999999999,
+ "std": 0.21186372978874887,
+ "detail": [
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 4,
+   "gain": 14.94095392425855
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 5,
+   "gain": 13.627730886141459
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 7,
+   "gain": 14.087047861019771
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 9,
+   "gain": 11.22812275091807
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 10,
+   "gain": 13.262488200267155
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 12,
+   "gain": 15.961425091822942
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 13,
+   "gain": 12.762258966763815
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 16,
+   "gain": 14.17109952668349
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 17,
+   "gain": 13.395479428768159
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 18,
+   "gain": 12.691616253058116
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 19,
+   "gain": 11.323123008012772
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 21,
+   "gain": 14.707131552696229
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 23,
+   "gain": 12.307296560208004
+  },
+  {
+   "fold": 1,
+   "kind": "seen",
+   "chan": 25,
+   "gain": 10.592834953467051
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 1,
+   "gain": 13.620264106988907
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 6,
+   "gain": 15.330259048938752
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 8,
+   "gain": 11.590563849608104
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 11,
+   "gain": 13.924273490905762
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 14,
+   "gain": 12.50734286705653
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 15,
+   "gain": 15.29606165289879
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 20,
+   "gain": 12.547738069295884
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 22,
+   "gain": 12.605070787668229
+  },
+  {
+   "fold": 1,
+   "kind": "unseen",
+   "chan": 24,
+   "gain": 11.588068735599517
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 3,
+   "gain": 16.030919152498246
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 4,
+   "gain": 14.96314316391945
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 5,
+   "gain": 13.816124727328619
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 6,
+   "gain": 15.388387982050578
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 7,
+   "gain": 14.051433678468069
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 8,
+   "gain": 11.645351741711298
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 11,
+   "gain": 14.415703827142716
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 13,
+   "gain": 12.819362419843674
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 14,
+   "gain": 12.598094954093296
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 15,
+   "gain": 15.234747258822123
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 18,
+   "gain": 13.10234420100848
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 20,
+   "gain": 12.868840909004211
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 22,
+   "gain": 12.813433593511581
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 24,
+   "gain": 11.800724289814632
+  },
+  {
+   "fold": 2,
+   "kind": "seen",
+   "chan": 25,
+   "gain": 10.64820253054301
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 9,
+   "gain": 10.783251816034317
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 10,
+   "gain": 13.237771757443745
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 12,
+   "gain": 15.95544575850169
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 16,
+   "gain": 14.017374753952026
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 17,
+   "gain": 13.408823748429617
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 19,
+   "gain": 11.297528127829233
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 21,
+   "gain": 14.503206288814544
+  },
+  {
+   "fold": 2,
+   "kind": "unseen",
+   "chan": 23,
+   "gain": 12.359453720847766
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 8,
+   "gain": 11.824176945288976
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 9,
+   "gain": 11.471012397607167
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 10,
+   "gain": 13.354824409882228
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 11,
+   "gain": 14.511629543701808
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 12,
+   "gain": 15.979710495471954
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 14,
+   "gain": 12.600756883621216
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 15,
+   "gain": 15.148284949858983
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 16,
+   "gain": 13.989245833953222
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 17,
+   "gain": 13.309837607542674
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 19,
+   "gain": 11.570884080727895
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 20,
+   "gain": 12.877330229679744
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 21,
+   "gain": 14.972308713197709
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 22,
+   "gain": 12.777227872610093
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 23,
+   "gain": 12.912606068452199
+  },
+  {
+   "fold": 3,
+   "kind": "seen",
+   "chan": 24,
+   "gain": 12.101688728729885
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 2,
+   "gain": 12.59365806976954
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 3,
+   "gain": 15.878955511252085
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 4,
+   "gain": 14.904967763026555
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 5,
+   "gain": 13.657576634486515
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 7,
+   "gain": 13.975044173002242
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 13,
+   "gain": 12.6749853849411
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 18,
+   "gain": 12.960701813300451
+  },
+  {
+   "fold": 3,
+   "kind": "unseen",
+   "chan": 25,
+   "gain": 10.729063062866528
+  }
+ ]
+}

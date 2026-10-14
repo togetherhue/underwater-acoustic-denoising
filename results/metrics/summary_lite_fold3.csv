@@ -1,0 +1,2 @@
+tag,fold,arch_time,arch_freq,fch,params,n_seen,n_unseen,gain_seen,gain_unseen,penalty_db
+lite_fold3,3,0,1,2.0,5910,900,480,13.2934,13.4219,0.1284
