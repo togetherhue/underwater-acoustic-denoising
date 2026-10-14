@@ -160,11 +160,12 @@ __P_LIST__ dB，<b>均值 __P_MEAN__ ± __P_STD__ dB</b>。
 <p>每折的两组测试集使用<b>完全相同的一批波形</b>（chirp 18–20，训练时从未出现），
 唯一差别是信道是否在训练集中出现过：</p>
 <table>
-<thead><tr><th>测试集</th><th>波形</th><th>信道</th><th>样本数</th></tr></thead>
+<thead><tr><th>测试集</th><th>波形</th><th>信道</th><th>样本数（三折合计）</th></tr></thead>
 <tbody>
 <tr><td>test_seen</td><td>chirp 18–20（新）</td><td>训练用过的信道</td><td>__N_SEEN__</td></tr>
 <tr><td>test_unseen</td><td>chirp 18–20（新）</td><td>本折留出的信道</td><td>__N_UNSEEN__</td></tr>
 </tbody></table>
+<p>每折的样本数为：test_seen 840 / 900 / 900，test_unseen 540 / 480 / 480。</p>
 <p>因此 <code>增益(unseen) − 增益(seen)</code> 就是<b>纯粹的信道新颖度代价</b>，
 不含波形新颖度、不含信道难度差异。</p>
 
