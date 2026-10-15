@@ -47,6 +47,11 @@ def main():
     ap.add_argument("--data", required=True, help="数据集根目录（含 train/val/testA/testC）")
     ap.add_argument("--epochs", type=int, default=15)
     ap.add_argument("--c", type=int, default=24, help="基础通道数")
+    ap.add_argument("--norm", default="bn", choices=["bn", "gn", "in"],
+                    help="归一化方式。bn=BatchNorm（依赖 batch 统计）；"
+                         "gn=GroupNorm / in=InstanceNorm（不依赖 batch，train/eval 一致）。"
+                         "诊断显示 BN 的 running stats 能把验证指标推动 5.3 dB，"
+                         "是逐轮振荡的主要来源之一")
     ap.add_argument("--short", type=int, default=1, help="启用短时尺度分支")
     ap.add_argument("--long", type=int, default=1, help="启用长时尺度分支")
     ap.add_argument("--gate", type=int, default=1, help="门控融合（0=简单平均）")
@@ -90,6 +95,7 @@ def main():
     print("组件        : 短时=%d 长时=%d 门控=%d 脉冲感知=%d  频域精修=%s  p注入频域=%d"
           % (A.short, A.long, A.gate, A.pulse,
              A.freq_refine if A.freq_refine > 0 else "关", A.pulse_freq))
+    print("归一化      : %s" % A.norm)
     print("损失        : %s  δ=%.3f  λ_imp=%.2f  λ_spec=%.2f  seed=%d"
           % (A.loss, A.delta, A.lam_imp, A.lam_spec, SEED))
 
@@ -101,6 +107,7 @@ def main():
     model = PN.PAMNet(c=A.c, use_short=bool(A.short), use_long=bool(A.long),
                       use_gate=bool(A.gate), use_pulse=bool(A.pulse),
                       freq_refine=A.freq_refine, pulse_freq=bool(A.pulse_freq),
+                      norm=A.norm,
                       n_fft=V3.CFG["n_fft"], hop=V3.CFG["hop_length"]).to(V3.DEVICE)
     bd = model.param_breakdown()
     print("参数量      : {:,}   明细 {}".format(
@@ -234,11 +241,11 @@ def main():
     with open(os.path.join(A.outdir, "summary_%s.csv" % A.tag), "w", newline="",
               encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["tag", "testset", "n", "params", "c", "use_short", "use_long",
+        w.writerow(["tag", "testset", "n", "params", "c", "norm", "use_short", "use_long",
                     "use_gate", "use_pulse", "freq_refine", "pulse_freq", "loss", "delta",
                     "lam_imp", "lam_spec", "epochs", "seed"] + COLS)
         for row in summary:
-            w.writerow([A.tag, row[0], row[1], model.n_params(), A.c, A.short, A.long,
+            w.writerow([A.tag, row[0], row[1], model.n_params(), A.c, A.norm, A.short, A.long,
                         A.gate, A.pulse, A.freq_refine, A.pulse_freq, A.loss, A.delta,
                         A.lam_imp, A.lam_spec, A.epochs, SEED] + ["%.4f" % v for v in row[2:]])
     print("结果 -> %s/summary_%s.csv" % (A.outdir, A.tag))

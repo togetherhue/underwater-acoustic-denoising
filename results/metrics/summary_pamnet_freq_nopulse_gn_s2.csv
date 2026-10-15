@@ -1,0 +1,3 @@
+tag,testset,n,params,c,norm,use_short,use_long,use_gate,use_pulse,freq_refine,pulse_freq,loss,delta,lam_imp,lam_spec,epochs,seed,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+pamnet_freq_nopulse_gn_s2,testA,1080,14367,24,gn,1,1,1,0,2.0,0,huber,0.2,1.0,0.05,15,2,-7.9633,17.7793,-8.0076,17.6757,-4.6104,14.4421,19.2883,18.4671,26.8817,17.4514,0.1710,0.1560
+pamnet_freq_nopulse_gn_s2,testC,240,14367,24,gn,1,1,1,0,2.0,0,huber,0.2,1.0,0.05,15,2,-8.2654,16.2925,-8.3100,16.1996,-4.9114,13.3369,18.0975,17.1914,25.8780,15.9899,0.1245,0.1551

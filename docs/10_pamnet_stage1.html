@@ -9,7 +9,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);
      font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
      font-size:15px;line-height:1.75}
-.wrap{max-width:1020px;margin:0 auto;padding:40px 24px 80px}
+.wrap{max-width:1040px;margin:0 auto;padding:40px 24px 80px}
 h1{font-size:27px;margin:0 0 6px;letter-spacing:-.4px}
 h2{font-size:20px;margin:38px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
 h3{font-size:16px;margin:24px 0 8px;color:#374151}
@@ -43,60 +43,93 @@ ul,ol{margin:10px 0;padding-left:22px}
 li{margin:6px 0}
 .tag{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;
      background:#e0e7ff;color:#3730a3;margin-right:6px;font-weight:600}
-.tag.new{background:#dcfce7;color:#166534}
 hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 </style></head><body><div class="wrap">
 
 <h1>PAM-Net：脉冲感知多尺度轻量化水声降噪网络</h1>
-<div class="sub">阶段1 实现与验证 &nbsp;·&nbsp; 按导师《面向非高斯脉冲噪声与突发干扰的轻量化多尺度水声信号降噪方法》方案实现
-&nbsp;·&nbsp; 数据集：α稳定背景 + 突发干扰（与阶段0 同一份）&nbsp;·&nbsp; 评估口径与阶段0 完全一致</div>
+<div class="sub">阶段1 实现、验证与统计效力分析 &nbsp;·&nbsp;
+按导师《面向非高斯脉冲噪声与突发干扰的轻量化多尺度水声信号降噪方法》实现
+&nbsp;·&nbsp; 数据集：α 稳定背景 + 突发干扰（与阶段0 同一份）
+&nbsp;·&nbsp; 最终结果均用 GroupNorm + 多种子协议</div>
 
-<div class='kpi'><div><b>+15.01</b><span>PAM-Net 干扰帧增益<br>(阶段0 基线 25.09)</span></div><div><b>+10.90</b><span>PAM-Net 干净帧增益<br>(阶段0 基线 14.13)</span></div><div><b>+9.59</b><span>干扰帧最差增益<br>(阶段0 基线 13.54)</span></div><div><b>8,906</b><span>参数（阶段0 纯频域 5,910）</span></div></div>
+<div class='kpi'><div><b>18.27</b><span>推荐模型·干净帧增益<br>±0.29（5 种子）</span></div><div><b>27.38</b><span>推荐模型·干扰帧增益<br>±0.16</span></div><div><b>17.12</b><span>推荐模型·干扰帧最差<br>±0.19</span></div><div><b>0.953</b><span>脉冲分支 AUC<br>（判别能力证据）</span></div></div>
 
-<h2>零、一句话结论</h2>
-<div class='box good'><b>① 按导师方案实现的 PAM-Net 是可用的，且远超经典方法。</b>纯时域版本（8,906 参数）在 testA 上拿到干扰帧增益 <b>+15.01 dB</b>、干净帧 <b>+10.90 dB</b>、干扰帧最差 <b>+9.59 dB</b>；经典方法里最强的盲谱减法只有 6.27 / 10.51 / 1.83 dB，理想带通只有 8.00 / 5.69 / 1.65 dB。<b>脉冲感知分支确实形成了判别能力</b>——它的输出 p_n 与真实干扰掩码的逐样本 AUC 达 <b>0.943</b>（详见第三节）。</div><div class='box bad'><b>② 但纯时域结构打不过同等训练的频域掩码模型。</b>相对阶段0 的 5,910 参数纯频域模型（干净帧 14.13 / 干扰帧 25.09 / 最差 13.54），PAM-Net 分别相差 <b>-3.23 / -10.08 / -3.95 dB</b>。<br><b>原因不是实现错误，而是结构先验的差异</b>：信号是窄带 chirp（798~1500 Hz），而 α 稳定背景噪声与突发脉冲都是宽带的。频域掩码模型天生就能只放行信号频带，等效于一个可学习的带通；而纯时域残差估计必须从零学出这个带通。这也与阶段0 的结论一致——当时就测出频域分支贡献了几乎全部性能。</div><div class='box good'><b>③ 加上频域精修后补上了这个缺口。</b>PAM-Net + 频域精修（14,858 参数）在 testA 上拿到干净帧 <b>+18.49</b> / 干扰帧 <b>+27.79</b> / 最差 <b>+16.93</b> dB，相对阶段0 纯频域基线 +4.35 / +2.70 / +3.39 dB，相对纯时域 PAM-Net +7.59 / +12.78 / +7.34 dB。<b>结论：脉冲感知机制应当嵌在频域框架里用。</b>该模型的脉冲感知分支 AUC 达 0.943，干扰位置平均置信度 0.8061、干净位置 0.0021（相差 377 倍）。</div>
+<h2>零、结论</h2>
+<div class="box good"><b>① 按导师方案实现的 PAM-Net 可用，且远超全部经典方法。</b>
+纯时域版（8,906 参数，GroupNorm，3 种子均值）在 testA 上拿到干扰帧增益
+<b>17.29 ± 0.69 dB</b>、干净帧 <b>10.85 ± 0.49 dB</b>、
+干扰帧最差 <b>9.80 ± 0.39 dB</b>；而经典方法里最强的盲谱减法只有
+6.27 / 10.51 / 1.83 dB，理想带通只有 8.00 / 5.69 / 1.65 dB。</div>
+
+<div class="box bad"><b>② 但纯时域结构打不过频域掩码模型，差距 10.1 dB（干扰帧）。</b>
+推荐模型（频域精修 + p 注入，14,858 参数）的干扰帧增益是
+<b>27.38 ± 0.16 dB</b>。原因不是实现错误，而是<b>结构先验</b>：
+信号是窄带 chirp（798–1500 Hz），而 α 稳定背景与突发脉冲都是宽带的，
+频域掩码天生等效于一个可学习的带通；纯时域残差估计必须从零学出这个带通。
+这与阶段0"频域分支贡献几乎全部性能"的结论一致。</div>
+
+<div class="box warn"><b>③ 脉冲感知分支确实形成了判别能力，但性能贡献很小。</b>
+该分支输出 p<sub>n</sub> 与真实干扰掩码的逐样本 <b>AUC = 0.953</b>
+（中位 0.976，97% 的样本 &gt; 0.8），干扰位置平均置信度
+0.828 vs 干净位置 0.0027 —— <b>确实学到了"哪里是脉冲"</b>。但把它接进网络后：<br>
+&nbsp;&nbsp;· <b>纯时域结构里，效应精确为零</b>（干扰帧 +0.095 dB，
+跨 3 种子 p = 0.80）；<br>
+&nbsp;&nbsp;· <b>只有在频域框架里才测得出</b>（干扰帧 +0.790 ± 0.143 dB，
+p = 0.005，n = 5 种子；干净帧 +0.127 dB）。<br>
+<b>但这个量级的效应还不够稳定</b>：testC 上显著的是干净帧
+（+0.260 ± 0.084 dB，p = 0.036）而干扰帧不显著，
+与 testA 相反 —— 效应落在哪个指标上会随测试集变化，说明它接近当前种子数下的
+可检测下限，要定论需要更多种子。<br>
+解释：二维频域掩码本身就能捕捉脉冲在时频面上的竖直条纹结构，脉冲感知分支与它高度冗余。</div>
+
+<div class="box bad"><b>④ 方法学修正（必须记录）：实验协议本身会放大结论。</b>
+BatchNorm 的逐批统计量被脉冲污染 → 验证指标逐轮振荡（标准差 <b>2.45 dB</b>），
+best-checkpoint 选择会挑到"统计量恰好有利"的轮次，带来中位 <b>3.8 dB</b> 的乐观偏差。
+改用 GroupNorm 后振荡降到 <b>0.68 dB</b>、最佳轮次移到末轮（单调收敛）。<br>
+<b>后果</b>：BN 单种子曾给出"脉冲分支 +1.99/+1.27/+0.96 dB"，而 GN 多种子只有
+<b>+0.127（干净帧）/+0.790（干扰帧） dB</b> ——
+<b>单种子 + BN 会把效应量夸大 2~6 倍</b>。所有最终结论均基于 GN + 多种子。</div>
+
 
 <h2>一、按导师方案实现的内容</h2>
-<p>导师文档第三节给出的模块，本实现逐一对应（代码 <code>pamnet.py</code>）：</p>
 <table>
 <thead><tr><th>导师文档</th><th>本实现</th><th>具体形式</th><th>参数量</th></tr></thead>
 <tbody>
 <tr><td>轻量化特征提取层<br><span style="color:#6b7280;font-size:12px">一维卷积 + 归一化 + 激活</span></td>
-    <td><code>FeatureExtractor</code></td><td>深度可分离 Conv1d(1→24, k=7) + BN + ReLU</td><td>104</td></tr>
+    <td><code>FeatureExtractor</code></td><td>深度可分离 Conv1d(1→24, k=7) + Norm + ReLU</td><td>104</td></tr>
 <tr><td>短时尺度分支<br><span style="color:#6b7280;font-size:12px">识别尖峰、脉冲和突发边缘</span></td>
-    <td><code>ShortBranch</code></td><td>小核 k=3 两层，实测感受野 13 点</td><td>2,808</td></tr>
+    <td><code>ShortBranch</code></td><td>小核 k=3 两层，实测感受野 <b>13 点</b></td><td>2,808</td></tr>
 <tr><td>长时尺度分支<br><span style="color:#6b7280;font-size:12px">提取波形连续性和时序结构</span></td>
-    <td><code>LongBranch</code></td><td>k=7 + 膨胀率 1/4/16，实测感受野 135 点（≈22 ms）</td><td>3,936</td></tr>
+    <td><code>LongBranch</code></td><td>k=7 + 膨胀率 1/4/16，实测感受野 <b>135 点</b>（≈22 ms）</td><td>3,936</td></tr>
 <tr><td>门控融合<br><span style="color:#6b7280;font-size:12px">g=σ(W<sub>g</sub>[F<sub>s</sub>;F<sub>l</sub>])</span></td>
     <td><code>GatedFusion</code></td><td>Conv1d(48→24, k=1) + Sigmoid，逐点加权</td><td>1,176</td></tr>
 <tr><td>脉冲感知分支<br><span style="color:#6b7280;font-size:12px">p<sub>n</sub>=σ(f<sub>imp</sub>(F)<sub>n</sub>)</span></td>
     <td><code>PulseBranch</code></td><td>深度可分离 Conv1d + Conv1d(·→1) + Sigmoid</td><td>433</td></tr>
 <tr><td>残差重建<br><span style="color:#6b7280;font-size:12px">ŝ=y−r̂</span></td>
-    <td><code>ResidualHead</code></td><td>深度可分离 Conv1d + Conv1d(·→1)，输出噪声残差</td><td>449</td></tr>
+    <td><code>ResidualHead</code></td><td>深度可分离 Conv1d + Conv1d(·→1)</td><td>449</td></tr>
 </tbody>
 <tfoot><tr><th>合计</th><th>—</th><th>—</th><th>8,906</th></tr></tfoot>
 </table>
+<p>单元测试 8 项全过：参数量、前向形状、梯度流（无死分支）、Huber 两段数值与梯度有界性、
+L_imp/L_spec 手算一致、频域精修分支与 v3 <code>FrequencyBranch</code> <b>逐位一致（最大差 0）</b>、
+感受野实测、长度保持性（k=3…9, d=1…16）。</p>
 
-<h3>1.1 文档未明确、由本实现补齐的两处（必须写进报告）</h3>
+<h3>1.1 文档未明确、由本实现补齐的两处</h3>
 <ol>
-<li><b>脉冲感知分支"辅助特征融合"的具体形式。</b>文档只说"利用该分支辅助特征融合"，
-未给公式。本实现把 p<sub>n</sub> 作为<b>附加通道拼接到融合特征</b>后送入残差估计头：
-<code>r̂ = f_θ([F_fuse ; p_n])</code>。<br>
-<span class="tag">实验依据</span>初版用的是乘性调制 <code>F_fuse ⊙ (1+p_n)</code>，
-<b>实测失败</b>：p 的分离度持续变好的同时，验证集降噪增益反而从 +3.94 掉到 −3.28 dB
-——因为 L_imp 的梯度会经乘性门直接灌进共享主干，模型"为了拟合掩码而破坏重建"。
-改成拼接后 credit assignment 变干净，验证帧增益单调上升。</li>
-<li><b>感受野的选取依据。</b>数据在 6 kHz 下突发时长为 12~180 点，故长时分支取
-膨胀率 1/4/16（k=7）得到 135 点感受野，覆盖绝大多数突发；短时分支取 k=3 两层
-（13 点）用于定位突发边缘。两者感受野相差 10 倍，符合"多尺度"的设计意图。</li>
+<li><b>脉冲感知分支"辅助特征融合"的形式。</b>文档只给 <code>p_n=σ(f_imp(F)_n)</code>，
+未给融合公式。本实现把 p<sub>n</sub> 作为<b>附加通道拼接</b>送入下游：
+纯时域版 <code>r̂=f_θ([F_fuse;p_n])</code>；频域版把 p 按 hop 做 max-pool 对齐到
+STFT 帧率、沿频率轴广播后作为掩码网络的<b>第 2 个输入通道</b>。<br>
+<span class="tag">实验依据</span>初版用乘性调制 <code>F_fuse⊙(1+p_n)</code>，<b>实测失败</b>：
+p 的分离度持续变好，验证 SNR 却从 +0.30 一路降到 −2.68 dB —— L_imp 的梯度经乘性门
+直接灌进共享主干，"为了拟合掩码而破坏重建"。</li>
+<li><b>感受野选取依据。</b>数据在 6 kHz 下突发时长为 12~180 点，故长时分支取膨胀率
+1/4/16（k=7）得 135 点感受野；短时分支取 k=3 两层（13 点）定位突发边缘，两者相差 10 倍。</li>
 </ol>
 
 <h2>二、损失函数与量级校准</h2>
-<p>按导师文档：<code>L = L_Huber + λ₁·L_imp + λ₂·L_spec</code>，其中 λ 由验证集确定。
-文档没有给 λ 的具体数值，而<b>直接沿用既有代码的 λ₂=0.5 会出问题</b>，因此先做了量级校准。</p>
-
-<h3>2.1 为什么 λ₂ 不能照搬 0.5</h3>
-<p><code>torch.stft</code> 未做归一化时，幅度谱的量纲是时域信号的 √N 倍。实测（<code>calibrate_loss.py</code>）：</p>
+<p>按导师文档：<code>L = L_Huber + λ₁·L_imp + λ₂·L_spec</code>，λ 由验证集确定。
+文档没给具体数值，而<b>直接沿用既有代码的 λ₂=0.5 会出问题</b>，因此先做量级校准。</p>
 <table>
 <thead><tr><th>估计质量</th><th>L1(时域)</th><th>Huber(δ=0.2)</th><th>L1(幅度谱)</th><th>谱/时域 比值</th></tr></thead>
 <tbody>
@@ -105,162 +138,210 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <tr><td>clean + 0.30·noise</td><td>0.3240</td><td>0.0516</td><td>8.22</td><td>25.4×</td></tr>
 <tr><td>clean + 0.15·noise</td><td>0.1620</td><td>0.0216</td><td>4.08</td><td>25.2×</td></tr>
 </tbody></table>
-<p>谱项比时域项大 <b>20~25 倍</b>。若取 λ₂=0.5，则谱项占总损失 90% 以上，
-<b>Huber 的"抗脉冲"作用被完全淹没，损失消融实验也会失去意义</b>。
-按校准把 λ₂ 定在 <b>0.05</b>（谱项占比降到约 70% 以下，与 Huber 项可比），
-并额外跑了一组 λ₂=0.5 作为敏感性对照（见消融表 <code>pamnet_l2big</code>）。</p>
+<p><code>torch.stft</code> 未归一化的幅度尺度是时域残差的 <b>20~25 倍</b>。若取 λ₂=0.5，
+谱项占总损失 90%+，Huber 的"抗脉冲"作用被淹没。校准后取 <b>λ₂=0.05</b>，
+并额外跑 λ₂=0.5 作敏感性对照（见消融表 <code>pamnet_l2big</code>）。</p>
+<div class="box warn"><b>关于 δ：</b>δ=0.2 与残差尺度匹配（模型输出 12~15 dB SNR 时残差
+rms≈0.21，即 δ≈1σ）。绝大多数干净样本落在平方区（精细拟合），脉冲样本落在一次区
+（梯度被限幅在 δ）。这正是导师文档"小误差保持精细拟合、大误差降低损失增长速度"的要求。</div>
 
-<div class="box warn">
-<b>关于 δ 的选择：</b>δ=0.2 与残差尺度匹配——模型在 12~15 dB 输出 SNR 时残差
-rms≈0.21，即 δ≈1σ。于是绝大多数干净样本落在平方区（精细拟合），
-脉冲样本落在一次区（梯度被限幅在 δ，不会因为个别大脉冲产生过强梯度）。
-这正是导师文档"小误差保持精细拟合能力、大误差降低损失增长速度"的要求。
-</div>
+<h2>三、归一化方式的诊断与协议修正</h2>
+<div class="box bad"><b>这是本次最重要的方法学发现，也是所有结论的前提。</b></div>
+<p>训练日志显示验证指标大幅振荡。对全部 run 统计（<code>analyze_stability.py</code>）：
+逐轮 val 帧增益的标准差中位 <b>2.01 dB</b>、最大 3.15 dB；最佳轮次散布在 4~14 轮；
+「最佳轮 − 末5轮均值」中位 <b>2.51 dB</b>。也就是说 best-checkpoint 选择在挑"运气轮次"，
+而它带来的乐观偏差<b>与要论证的效应量同量级</b>。</p>
 
-<h3>2.2 模型选择准则的修正</h3>
-<div class="box warn">
-<b>不能用验证损失选模型。</b>验证损失被谱项主导，且全局类指标在脉冲噪声下会被个别脉冲
-主导（阶段0 已证明全局 SNR 会把"漏掉脉冲"判成更好）。本实现改用
-<b>验证集逐帧降噪增益中位数</b>作为选择准则——与最终评估口径一致。
-这一条是首轮实验的实际教训：用 val_loss 选出的"最佳"模型（第 1 轮）实际降噪增益只有
-+3.94 dB，而第 6 轮已到 +10.41 dB。
-</div>
+<h3>3.1 定位原因</h3>
+<p>输入是重尾的（α 稳定背景 + 20×rms 脉冲），逐 batch 的统计量差异极大。
+BN 的 running statistics 因此被脉冲污染，eval 模式（用 running stats）与 train 模式
+（用 batch stats）行为不一致。实测同一 checkpoint：</p>
+<table>
+<thead><tr><th>配置</th><th>帧增益中位 (dB)</th></tr></thead>
+<tbody>
+<tr><td>原 running stats（eval 模式）</td><td>11.46</td></tr>
+<tr><td>重校准到训练集统计</td><td>6.14</td></tr>
+<tr><td>batch stats（train 模式）</td><td>7.46</td></tr>
+</tbody></table>
+<p><b>归一化统计量能把指标推动 5.3 dB</b> —— 足以解释逐轮 2~3 dB 的振荡。</p>
 
-<h2>三、脉冲感知分支是否真的学到了脉冲</h2>
-<p>导师文档把创新性明确落在"<b>是否针对脉冲干扰与有效水声波形之间的差异形成判别能力</b>"。
-最直接的证据就是 p<sub>n</sub> 与真实干扰掩码 m<sub>n</sub> 的对应关系。
-下面用<b>最终推荐的模型</b>（PAM-Net + p 注入频域）统计。</p>
+<h3>3.2 修正：改用 GroupNorm</h3>
+<p>给全部卷积层加可切换的归一化（<code>--norm bn|gn|in</code>）。GN/IN 不依赖 batch 统计，
+train 与 eval 输出<b>逐位一致</b>（实测最大差 0.000；BN 为 0.84）。同配置、同数据、
+同超参、只换归一化的对照：</p>
+<figure><img src="figures/pamnet/figN_norm.png" alt="图 N 归一化方式对训练稳定性的影响：BatchNorm（虚线）大幅振荡，GroupNorm（实线）单调收敛"><figcaption>图 N 归一化方式对训练稳定性的影响：BatchNorm（虚线）大幅振荡，GroupNorm（实线）单调收敛</figcaption></figure>
+<table>
+<thead><tr><th>配置</th><th>归一化</th><th>逐轮标准差 (dB)</th><th>最佳轮次</th><th>最佳−末5轮 (dB)</th></tr></thead>
+<tbody>
+<tr><td>纯时域 PAM-Net</td><td>BatchNorm</td><td>2.450</td><td>11</td><td>3.80</td></tr>
+<tr><td>纯时域 PAM-Net</td><td><b>GroupNorm</b></td><td><b>0.677</b></td><td><b>15（末轮）</b></td><td><b>0.05</b></td></tr>
+<tr><td>频域精修 + p 注入</td><td>BatchNorm</td><td>1.483</td><td>13</td><td>1.29</td></tr>
+<tr><td>频域精修 + p 注入</td><td><b>GroupNorm</b></td><td><b>0.831</b></td><td><b>15（末轮）</b></td><td><b>0.08</b></td></tr>
+</tbody></table>
+<p>振荡降到约 <b>1/3.6</b>，且最佳轮次移到末轮（单调收敛），选择偏差从数 dB 降到 ~0.05 dB。
+<b>GN 不但没让性能变差，在纯时域上反而更好</b>（干扰帧 +2.8 dB）。因此<b>最终结果改用 GN 协议</b>。</p>
+
+<h2>四、脉冲感知分支是否真的学到了脉冲</h2>
+<p>导师文档把创新性落在"是否针对脉冲干扰与有效水声波形之间的差异形成判别能力"。
+最直接的证据是 p<sub>n</sub> 与真实干扰掩码 m<sub>n</sub> 的对应关系。
+下图为推荐模型（GN，频域精修 + p 注入）在 testA 上的统计。</p>
 <figure><img src="figures/pamnet/figK_pulse_aware.png" alt="图 K 脉冲感知分支诊断：左为 p_n 在干扰/干净位置的分布；右为具体样本中 p_n 与真实掩码的对齐"><figcaption>图 K 脉冲感知分支诊断：左为 p_n 在干扰/干净位置的分布；右为具体样本中 p_n 与真实掩码的对齐</figcaption></figure>
 <table>
 <thead><tr><th>统计量</th><th>数值</th></tr></thead>
 <tbody>
-<tr><td>干扰位置平均置信度 p<sub>n</sub></td><td>0.8061</td></tr>
-<tr><td>干净位置平均置信度 p<sub>n</sub></td><td>0.0021</td></tr>
-<tr><td>两者比值</td><td>376.9×</td></tr>
-<tr><td>逐样本 AUC（p 作为脉冲检测器）均值</td><td>0.943</td></tr>
-<tr><td>逐样本 AUC 中位数 / p10</td><td>0.969 / 0.866</td></tr>
-<tr><td>AUC &gt; 0.8 的样本比例</td><td>94.6%</td></tr>
+<tr><td>干扰位置平均置信度 p<sub>n</sub>（中位）</td><td>0.8284（0.9997）</td></tr>
+<tr><td>干净位置平均置信度 p<sub>n</sub>（中位）</td><td>0.0027（0.0004）</td></tr>
+<tr><td>两者倍数</td><td>303×</td></tr>
+<tr><td>逐样本 AUC 均值（中位）</td><td><b>0.953</b>（0.976）</td></tr>
+<tr><td>AUC &gt; 0.8 的样本比例</td><td>96.7%</td></tr>
 </tbody></table>
-<p>AUC=0.5 表示毫无判别力，1.0 表示完美分离。上面的结果说明该分支<b>确实学到了</b>
-"哪里是脉冲"，而不是输出一个常数——这是导师方案创新点成立的关键证据。</p>
+<p><b>结论：该分支确实学到了"哪里是脉冲"，不是输出常数。</b>这是导师方案创新点成立的
+关键证据 —— 但"能识别"不等于"能提升性能"，见下一节。</p>
 
-<h2>四、结果：与阶段0 基线对照（testA：新波形 + 见过的信道）</h2>
+<h2>五、结果</h2>
+<h3>5.1 主结果（GN 协议，多种子均值 ± 种子间标准差，testA）</h3>
 <table>
-<thead><tr><th>模型</th><th>参数</th><th>干净帧增益<br>(dB)</th><th>干扰帧增益<br>(dB)</th>
-<th>干扰帧最差<br>(dB)</th><th>输出全局SNR<br>(dB)</th></tr></thead>
+<thead><tr><th>模型</th><th>参数</th><th>干净帧增益 (dB)</th><th>干扰帧增益 (dB)</th>
+<th>干扰帧最差 (dB)</th><th>输出 SNR (dB)</th></tr></thead>
 <tbody>
-<tr><td>PAM-Net 完整（纯时域）</td><td>8,906</td><td>+10.90</td><td>+15.01</td><td>+9.59</td><td>+7.46</td></tr><tr><td>纯时域 − 脉冲感知分支</td><td>8,457</td><td>+11.28</td><td>+14.72</td><td>+9.38</td><td>+7.28</td></tr><tr><td>PAM-Net + 频域精修</td><td>14,816</td><td>+16.38</td><td>+26.70</td><td>+15.75</td><td>+15.51</td></tr><tr><td>频域精修，− 脉冲分支</td><td>14,367</td><td>+16.49</td><td>+26.52</td><td>+15.96</td><td>+15.78</td></tr><tr><td>频域精修 + p 注入频域</td><td>14,858</td><td>+18.49</td><td>+27.79</td><td>+16.93</td><td>+17.83</td></tr><tr><td>− 门控（改简单平均）</td><td>7,730</td><td>+9.50</td><td>+11.48</td><td>+8.01</td><td>+3.88</td></tr><tr><td>仅短时分支</td><td>3,794</td><td>+7.50</td><td>+11.99</td><td>+6.83</td><td>+4.46</td></tr><tr><td>仅长时分支</td><td>4,922</td><td>+9.11</td><td>+13.41</td><td>+8.51</td><td>+5.57</td></tr><tr><td>损失换 L1（去 Huber）</td><td>8,906</td><td>+11.34</td><td>+15.80</td><td>+9.89</td><td>+7.58</td></tr><tr><td>λ2=0.5（谱项主导）</td><td>8,906</td><td>+9.92</td><td>+13.94</td><td>+8.63</td><td>+6.08</td></tr><tr class='ref'><td>【阶段0】纯频域 5,910</td><td>5,910</td><td>+14.13</td><td>+25.09</td><td>+13.54</td><td>+12.51</td></tr><tr class='ref'><td>【阶段0】时域+频域 57,657</td><td>57,657</td><td>+13.59</td><td>+23.89</td><td>+12.77</td><td>+11.79</td></tr><tr class='ref'><td>【阶段0】高斯背景+脉冲</td><td>5,910</td><td>+14.09</td><td>+25.66</td><td>+14.43</td><td>+16.60</td></tr>
+<tr><td>纯时域 + 脉冲感知分支</td><td>8,906</td><td>10.85 ± 0.49</td><td>17.29 ± 0.69</td><td>9.80 ± 0.39</td><td>9.25 ± 0.44</td></tr><tr><td>纯时域 − 脉冲感知分支</td><td>8,457</td><td>10.84 ± 1.04</td><td>17.19 ± 0.84</td><td>9.81 ± 0.52</td><td>9.19 ± 0.65</td></tr><tr style='background:#eef4ff;font-weight:600'><td>频域精修 + p 注入频域（推荐）</td><td>14,858</td><td>18.27 ± 0.29</td><td>27.38 ± 0.16</td><td>17.12 ± 0.19</td><td>17.70 ± 0.22</td></tr><tr><td>频域精修 − 脉冲感知分支</td><td>14,367</td><td>18.14 ± 0.22</td><td>26.59 ± 0.26</td><td>17.10 ± 0.23</td><td>17.44 ± 0.21</td></tr>
 </tbody></table>
-<p style="font-size:12.5px;color:#6b7280">灰斜体为阶段0 参照（同一份数据集、同一套评估口径）。
-「干扰帧最差」是最该优化的指标——它反映被漏掉的脉冲，中位数看不出来。</p>
+<figure><img src="figures/pamnet/figM_seeds.png" alt="图 M 关键配置的多种子结果（误差棒 = 种子间标准差）"><figcaption>图 M 关键配置的多种子结果（误差棒 = 种子间标准差）</figcaption></figure>
 
-<h3>4.1 testC（新波形 + 新信道，最严格）</h3>
+<h3>5.2 与经典方法对照（不含任何学习成分）</h3>
+<p>信号是窄带 chirp（798~1500 Hz），而 α 稳定背景与突发脉冲都是<b>宽带</b>的，
+所以一个固定带通就能滤掉大量噪声。把 PAM-Net 放进这个参照系才能判断增益来自哪里。</p>
 <table>
-<thead><tr><th>模型</th><th>干净帧增益</th><th>干扰帧增益</th><th>干扰帧最差</th></tr></thead>
-<tbody>
-<tr><td>PAM-Net 完整（纯时域）</td><td>+10.60</td><td>+15.05</td><td>+8.96</td></tr><tr><td>纯时域 − 脉冲感知分支</td><td>+10.91</td><td>+14.70</td><td>+8.72</td></tr><tr><td>PAM-Net + 频域精修</td><td>+13.92</td><td>+24.42</td><td>+13.12</td></tr><tr><td>频域精修，− 脉冲分支</td><td>+14.00</td><td>+24.41</td><td>+13.30</td></tr><tr><td>频域精修 + p 注入频域</td><td>+16.88</td><td>+25.71</td><td>+14.60</td></tr><tr><td>− 门控（改简单平均）</td><td>+9.26</td><td>+11.48</td><td>+7.52</td></tr><tr><td>仅短时分支</td><td>+7.41</td><td>+12.12</td><td>+6.64</td></tr><tr><td>仅长时分支</td><td>+9.03</td><td>+13.54</td><td>+8.15</td></tr><tr><td>损失换 L1（去 Huber）</td><td>+11.06</td><td>+15.79</td><td>+9.37</td></tr><tr><td>λ2=0.5（谱项主导）</td><td>+9.57</td><td>+13.90</td><td>+8.02</td></tr><tr class='ref'><td>【阶段0】纯频域 5,910</td><td>+11.25</td><td>+22.69</td><td>+10.80</td></tr><tr class='ref'><td>【阶段0】时域+频域 57,657</td><td>+10.59</td><td>+21.65</td><td>+10.16</td></tr><tr class='ref'><td>【阶段0】高斯背景+脉冲</td><td>+11.71</td><td>+23.30</td><td>+11.90</td></tr>
-</tbody></table>
-
-<h3>4.2 与经典方法对照（不含任何学习成分）</h3>
-<p>信号是窄带 chirp（798~1500 Hz），而 α 稳定背景噪声与突发脉冲都是<b>宽带</b>的，
-所以一个固定带通就能滤掉大量噪声。把 PAM-Net 放进这个参照系才能判断它的增益来自哪里。</p>
-<table>
-<thead><tr><th>方法</th><th>输出全局SNR (dB)</th><th>干净帧增益 (dB)</th>
+<thead><tr><th>方法</th><th>输出全局 SNR (dB)</th><th>干净帧增益 (dB)</th>
 <th>干扰帧增益 (dB)</th><th>干扰帧最差 (dB)</th></tr></thead>
 <tbody>
-<tr class='ref'><td>含噪输入</td><td>-8.22</td><td>+0.00</td><td>+0.00</td><td>+0.00</td></tr><tr><td>理想带通 798-1500Hz</td><td>-2.09</td><td>+5.69</td><td>+8.00</td><td>+1.65</td></tr><tr><td>谱减法（盲）</td><td>-0.25</td><td>+10.51</td><td>+6.27</td><td>+1.83</td></tr><tr><td>维纳滤波（盲）</td><td>-3.64</td><td>+5.47</td><td>+2.21</td><td>+0.39</td></tr><tr><td>中值滤波 k=5</td><td>-3.26</td><td>-1.50</td><td>+4.58</td><td>-2.48</td></tr><tr><td><b>PAM-Net（本文，纯时域）</b></td><td>+7.46</td><td>+10.90</td><td>+15.01</td><td>+9.59</td></tr><tr class='ref'><td>阶段0 纯频域（5,910 参数）</td><td>+12.51</td><td>+14.13</td><td>+25.09</td><td>+13.54</td></tr>
+<tr class='ref'><td>含噪输入</td><td>-8.22</td><td>+0.00</td><td>+0.00</td><td>+0.00</td></tr><tr><td>理想带通 798-1500Hz</td><td>-2.09</td><td>+5.69</td><td>+8.00</td><td>+1.65</td></tr><tr><td>谱减法（盲）</td><td>-0.25</td><td>+10.51</td><td>+6.27</td><td>+1.83</td></tr><tr><td>维纳滤波（盲）</td><td>-3.64</td><td>+5.47</td><td>+2.21</td><td>+0.39</td></tr><tr><td>中值滤波 k=5</td><td>-3.26</td><td>-1.50</td><td>+4.58</td><td>-2.48</td></tr>
 </tbody></table>
-<div class='box good'><b>两个必须同时说清的事实：</b>① PAM-Net 的干扰帧增益 15.01 dB，<b>远超全部经典方法</b>（理想带通 8.00、谱减 6.27、维纳 2.21、中值 4.58），干扰帧最差也做到 9.59 dB（经典方法最好的只有 1.83 dB）。说明脉冲感知机制确实在起作用。② 但 PAM-Net 干净帧增益 10.90 dB 只比盲谱减（10.51）略高，且<b>明显低于阶段0 的频域掩码模型（14.13）</b>。原因见下一节——窄带信号 + 宽带噪声下，频域选择本身就是极强的先验。</div>
+<div class="box good"><b>PAM-Net 的干扰段处理能力远超全部经典方法</b>
+（干扰帧 17.3 vs 经典最好 8.00；干扰帧最差 9.8 vs 1.83）。
+但干净帧只比盲谱减略高，且明显低于频域掩码模型 —— 后者天生等效于可学习带通。</div>
 
-<h2>五、消融：创新点到底值多少</h2>
-<figure><img src="figures/pamnet/figJ_pamnet_ablation.png" alt="图 J 消融结果（testA）：蓝柱为 PAM-Net 完整模型，灰柱为各消融变体，红虚线为阶段0 纯频域基线"><figcaption>图 J 消融结果（testA）：蓝柱为 PAM-Net 完整模型，灰柱为各消融变体，红虚线为阶段0 纯频域基线</figcaption></figure>
-<p>全部消融在<b>同一份数据、同一套超参、同一个评估口径</b>下完成，每项只改一个组件。</p>
+<h3>5.3 跨种子统计（判断效应真伪的唯一可靠方式）</h3>
 <table>
-<thead><tr><th>变体</th><th>参数</th><th>干净帧<br>(dB)</th><th>干扰帧<br>(dB)</th>
-<th>干扰最差<br>(dB)</th><th>Δ干净帧</th><th>Δ干扰帧</th><th>Δ最差</th></tr></thead>
+<thead><tr><th>对比（testA）</th><th>指标</th><th>均值差 ± 标准误 (dB)</th>
+<th>t</th><th>p</th><th>n（种子）</th></tr></thead>
 <tbody>
-<tr style='background:#eef4ff;font-weight:600'><td>PAM-Net 完整（纯时域）（参照）</td><td>8,906</td><td>+10.90</td><td>+15.01</td><td>+9.59</td><td>-3.23</td><td>-10.08</td><td>-3.95</td></tr><tr><td>纯时域 − 脉冲感知分支</td><td>8,457</td><td>+11.28</td><td>+14.72</td><td>+9.38</td><td>-2.85</td><td>-10.37</td><td>-4.16</td></tr><tr><td>PAM-Net + 频域精修</td><td>14,816</td><td>+16.38</td><td>+26.70</td><td>+15.75</td><td>+2.25</td><td>+1.61</td><td>+2.21</td></tr><tr><td>频域精修，− 脉冲分支</td><td>14,367</td><td>+16.49</td><td>+26.52</td><td>+15.96</td><td>+2.36</td><td>+1.43</td><td>+2.43</td></tr><tr><td>频域精修 + p 注入频域</td><td>14,858</td><td>+18.49</td><td>+27.79</td><td>+16.93</td><td>+4.35</td><td>+2.70</td><td>+3.39</td></tr><tr><td>− 门控（改简单平均）</td><td>7,730</td><td>+9.50</td><td>+11.48</td><td>+8.01</td><td>-4.63</td><td>-13.62</td><td>-5.52</td></tr><tr><td>仅短时分支</td><td>3,794</td><td>+7.50</td><td>+11.99</td><td>+6.83</td><td>-6.64</td><td>-13.11</td><td>-6.71</td></tr><tr><td>仅长时分支</td><td>4,922</td><td>+9.11</td><td>+13.41</td><td>+8.51</td><td>-5.02</td><td>-11.69</td><td>-5.02</td></tr><tr><td>损失换 L1（去 Huber）</td><td>8,906</td><td>+11.34</td><td>+15.80</td><td>+9.89</td><td>-2.80</td><td>-9.29</td><td>-3.64</td></tr><tr><td>λ2=0.5（谱项主导）</td><td>8,906</td><td>+9.92</td><td>+13.94</td><td>+8.63</td><td>-4.21</td><td>-11.16</td><td>-4.90</td></tr>
-</tbody>
-<tfoot><tr><th colspan="5" style="text-align:right">Δ 为相对【阶段0 纯频域基线】的差（正 = 更好）</th>
-<th colspan="3"></th></tr></tfoot></table>
-<div class='box'><b>① 纯时域结构里，脉冲感知分支只在干扰段有效，且以干净段为代价。</b>去掉它之后：干净帧 -0.38、干扰帧 +0.29、干扰最差 +0.21 dB。配对检验显示三项都高度显著（p &lt; 1e−6），但效应量小（|d_z| ≤ 0.89），方向是「干扰帧变好、干净帧变差」。</div><div class='box warn'><b>② 但在「后置频域精修」的混合结构里，该分支的贡献检测不到。</b>频域精修 + 脉冲分支（14,816 参数）对 频域精修 − 脉冲分支（14,367 参数）：干净帧 -0.11、干扰帧 +0.18、最差 -0.21 dB——差异都在 ±0.25 dB 内，小于本次训练的运行间波动。<br><b>可能的原因</b>：这里频域精修是接在残差相减【之后】的，掩码会重新塑形整个频谱，时域残差估得准不准几乎不影响最终输出；而且二维卷积本身就能捕捉脉冲在时频面上的竖直条纹结构，等于把脉冲检测隐含地做掉了。因此又补了一组把 p 直接喂进频域掩码的变体（pamnet_freq_pf），见下一段。</div><div class='box good'><b>③ 把 p 直接注入频域掩码 —— 这才是有效的集成方式。</b>相对「频域精修 − 脉冲分支」：干净帧 <b>+1.99</b>、干扰帧 <b>+1.26</b>、干扰最差 <b>+0.96</b> dB，配对检验三项全部 p &lt; 1e−31，效应量 d_z 分别为 1.16 / 0.54 / 0.38（干净帧属大效应）。<br>相对纯时域 PAM-Net：干净帧 +7.59、干扰帧 +12.78、干扰最差 +7.34 dB。<b>结论：脉冲感知机制必须在频域框架内使用才发挥价值。</b></div>
+<tr><td>纯时域：+脉冲分支 − (−脉冲分支) [GN]</td><td>干净帧</td><td>+0.003 ± 0.405</td><td>0.01</td><td>0.996 ns</td><td>3</td></tr><tr><td></td><td>干扰帧</td><td>+0.095 ± 0.338</td><td>0.28</td><td>0.805 ns</td><td>3</td></tr><tr><td></td><td>干扰最差</td><td>-0.009 ± 0.127</td><td>-0.07</td><td>0.948 ns</td><td>3</td></tr><tr><td></td><td>输出SNR</td><td>+0.056 ± 0.270</td><td>0.21</td><td>0.855 ns</td><td>3</td></tr><tr><td>频域精修：+p注入 − (−脉冲分支) [GN]</td><td>干净帧</td><td>+0.127 ± 0.082</td><td>1.54</td><td>0.198 ns</td><td>5</td></tr><tr><td></td><td>干扰帧</td><td>+0.790 ± 0.143</td><td>5.52</td><td>0.005 **</td><td>5</td></tr><tr><td></td><td>干扰最差</td><td>+0.025 ± 0.141</td><td>0.17</td><td>0.870 ns</td><td>5</td></tr><tr><td></td><td>输出SNR</td><td>+0.259 ± 0.120</td><td>2.15</td><td>0.098 ns</td><td>5</td></tr>
+</tbody></table>
+<div class="box bad"><b>读法：</b>纯时域里脉冲分支的效应<b>精确为零</b>
+（干扰帧 +0.095 ± 0.338，p = 0.80）。只有在频域框架里才测得出
+（干扰帧 +0.823 ± 0.237，p = 0.074，n = 3）。
+<b>而 BN 单种子曾给出 +1.99/+1.27/+0.96 dB</b> —— 单种子 + BN 把效应夸大了 2~6 倍。</div>
 
-<h3>5.1 配对显著性检验</h3>
-<p>消融的效应量只有 0.2~2 dB，必须回答"这是真实效应还是抽样波动"。
-两个变体在<b>同一批测试样本</b>上评估，因此可对逐样本指标差做配对检验：
-<code>d_i = A_i − B_i</code>，<code>t = mean(d)/(std(d)/√n)</code>。</p>
+<h3>5.4 BN 单种子对照（说明选择偏差有多大）</h3>
+<table>
+<thead><tr><th>对比</th><th>指标</th><th>均值差 (dB)</th><th>种子数</th></tr></thead>
+<tbody>
+<tr><td>纯时域：+ − −</td><td>干净帧</td><td>-0.381</td><td>1</td></tr><tr><td></td><td>干扰帧</td><td>+0.287</td><td>1</td></tr><tr><td></td><td>干扰最差</td><td>+0.208</td><td>1</td></tr><tr><td></td><td>输出SNR</td><td>+0.174</td><td>1</td></tr><tr><td>频域：+ − −</td><td>干净帧</td><td>+1.993</td><td>1</td></tr><tr><td></td><td>干扰帧</td><td>+1.265</td><td>1</td></tr><tr><td></td><td>干扰最差</td><td>+0.962</td><td>1</td></tr><tr><td></td><td>输出SNR</td><td>+2.050</td><td>1</td></tr>
+</tbody></table>
+
+<h3>5.5 样本级配对检验（within-seed，BN 单种子）</h3>
+<p>两个变体在<b>同一批测试样本</b>上评估，因此可对逐样本指标差做配对检验。
+它消除的是"样本抽样"不确定性，<b>不消除训练随机性</b>。</p>
 <table>
 <thead><tr><th>对比（testA）</th><th>指标</th><th>均值差 (dB)</th>
 <th>t</th><th>p</th><th>Cohen's d<sub>z</sub></th></tr></thead>
 <tbody>
 <tr><td>纯时域：+脉冲分支  vs  −脉冲分支</td><td>干净帧</td><td>-0.381</td><td>-29.31</td><td>2.3e-139 ***</td><td>-0.892</td></tr><tr><td></td><td>干扰帧</td><td>+0.287</td><td>8.56</td><td>3.9e-17 ***</td><td>+0.262</td></tr><tr><td></td><td>干扰最差</td><td>+0.208</td><td>5.00</td><td>6.6e-07 ***</td><td>+0.153</td></tr><tr><td>后置频域精修：+脉冲分支 vs −脉冲分支</td><td>干净帧</td><td>-0.113</td><td>-3.72</td><td>2.1e-04 ***</td><td>-0.113</td></tr><tr><td></td><td>干扰帧</td><td>+0.178</td><td>2.77</td><td>5.7e-03 **</td><td>+0.085</td></tr><tr><td></td><td>干扰最差</td><td>-0.214</td><td>-3.03</td><td>2.5e-03 **</td><td>-0.093</td></tr><tr><td>p注入频域：+脉冲分支 vs −脉冲分支</td><td>干净帧</td><td>+1.993</td><td>38.20</td><td>1.2e-202 ***</td><td>+1.162</td></tr><tr><td></td><td>干扰帧</td><td>+1.265</td><td>17.58</td><td>6.0e-61 ***</td><td>+0.539</td></tr><tr><td></td><td>干扰最差</td><td>+0.962</td><td>12.25</td><td>2.4e-32 ***</td><td>+0.375</td></tr><tr><td>p注入频域 vs 后置频域精修（均含脉冲分支）</td><td>干净帧</td><td>+2.106</td><td>35.91</td><td>1.9e-186 ***</td><td>+1.093</td></tr><tr><td></td><td>干扰帧</td><td>+1.087</td><td>16.51</td><td>1.1e-54 ***</td><td>+0.506</td></tr><tr><td></td><td>干扰最差</td><td>+1.176</td><td>14.04</td><td>3.3e-41 ***</td><td>+0.430</td></tr><tr><td>加频域精修 vs 不加（均含脉冲分支）</td><td>干净帧</td><td>+5.480</td><td>53.20</td><td>7.3e-304 ***</td><td>+1.619</td></tr><tr><td></td><td>干扰帧</td><td>+11.692</td><td>60.09</td><td>0.0e+00 ***</td><td>+1.842</td></tr><tr><td></td><td>干扰最差</td><td>+6.163</td><td>33.73</td><td>3.6e-170 ***</td><td>+1.034</td></tr><tr><td>PAM-Net 纯时域 vs 阶段0 纯频域</td><td>干净帧</td><td>-3.233</td><td>-42.10</td><td>6.2e-230 ***</td><td>-1.281</td></tr><tr><td></td><td>干扰帧</td><td>-10.082</td><td>-45.63</td><td>1.3e-252 ***</td><td>-1.399</td></tr><tr><td></td><td>干扰最差</td><td>-3.949</td><td>-20.36</td><td>4.5e-78 ***</td><td>-0.624</td></tr><tr><td>p注入频域 vs 阶段0 纯频域</td><td>干净帧</td><td>+4.353</td><td>82.85</td><td>0.0e+00 ***</td><td>+2.521</td></tr><tr><td></td><td>干扰帧</td><td>+2.697</td><td>25.30</td><td>6.1e-111 ***</td><td>+0.776</td></tr><tr><td></td><td>干扰最差</td><td>+3.390</td><td>29.75</td><td>5.6e-142 ***</td><td>+0.912</td></tr><tr><td>p注入频域 vs PAM-Net 纯时域</td><td>干净帧</td><td>+7.586</td><td>122.29</td><td>0.0e+00 ***</td><td>+3.721</td></tr><tr><td></td><td>干扰帧</td><td>+12.779</td><td>66.09</td><td>0.0e+00 ***</td><td>+2.026</td></tr><tr><td></td><td>干扰最差</td><td>+7.340</td><td>41.57</td><td>4.5e-225 ***</td><td>+1.274</td></tr><tr><td>损失换 L1 vs Huber（纯时域）</td><td>干净帧</td><td>+0.438</td><td>29.96</td><td>5.3e-144 ***</td><td>+0.912</td></tr><tr><td></td><td>干扰帧</td><td>+0.793</td><td>24.08</td><td>1.3e-102 ***</td><td>+0.738</td></tr><tr><td></td><td>干扰最差</td><td>+0.305</td><td>7.49</td><td>1.5e-13 ***</td><td>+0.230</td></tr><tr><td>λ2=0.5 vs λ2=0.05（纯时域）</td><td>干净帧</td><td>-0.977</td><td>-41.97</td><td>5.0e-229 ***</td><td>-1.277</td></tr><tr><td></td><td>干扰帧</td><td>-1.073</td><td>-43.97</td><td>1.9e-241 ***</td><td>-1.348</td></tr><tr><td></td><td>干扰最差</td><td>-0.954</td><td>-20.13</td><td>1.2e-76 ***</td><td>-0.617</td></tr>
 </tbody></table>
+<div class="box warn"><b>注意两者的区别：</b>配对检验的 p 值极小（1e−202 量级）是因为
+n=1080 个样本；但它<b>完全不反映</b>换个种子重训会变多少。5.3 节的跨种子检验才是判断
+效应是否真实的标准 —— 两者结论差了一个数量级。</div>
+
+<h2>六、消融（单种子，BN 协议；Δ 相对阶段0 纯频域基线）</h2>
+<figure><img src="figures/pamnet/figJ_pamnet_ablation.png" alt="图 J 消融结果（testA，单种子 BN）"><figcaption>图 J 消融结果（testA，单种子 BN）</figcaption></figure>
+<table>
+<thead><tr><th>变体</th><th>参数</th><th>干净帧 (dB)</th><th>干扰帧 (dB)</th>
+<th>干扰最差 (dB)</th><th>Δ干净帧</th><th>Δ干扰帧</th><th>Δ最差</th></tr></thead>
+<tbody>
+<tr style='background:#eef4ff;font-weight:600'><td>PAM-Net 完整（纯时域，BN）（参照）</td><td>8,906</td><td>+10.90</td><td>+15.01</td><td>+9.59</td><td>-3.23</td><td>-10.08</td><td>-3.95</td></tr><tr><td>纯时域 − 脉冲感知分支（BN）</td><td>8,457</td><td>+11.28</td><td>+14.72</td><td>+9.38</td><td>-2.85</td><td>-10.37</td><td>-4.16</td></tr><tr><td>PAM-Net + 频域精修（BN）</td><td>14,816</td><td>+16.38</td><td>+26.70</td><td>+15.75</td><td>+2.25</td><td>+1.61</td><td>+2.21</td></tr><tr><td>频域精修，− 脉冲分支（BN）</td><td>14,367</td><td>+16.49</td><td>+26.52</td><td>+15.96</td><td>+2.36</td><td>+1.43</td><td>+2.43</td></tr><tr><td>频域精修 + p 注入频域（BN）</td><td>14,858</td><td>+18.49</td><td>+27.79</td><td>+16.93</td><td>+4.35</td><td>+2.70</td><td>+3.39</td></tr><tr><td>PAM-Net 纯时域（GN）</td><td>8,906</td><td>+11.24</td><td>+17.83</td><td>+10.17</td><td>-2.89</td><td>-7.26</td><td>-3.37</td></tr><tr><td>纯时域 − 脉冲分支（GN）</td><td>8,457</td><td>+12.02</td><td>+18.16</td><td>+10.39</td><td>-2.11</td><td>-6.93</td><td>-3.14</td></tr><tr><td>频域精修 + p 注入频域（GN）</td><td>14,858</td><td>+18.50</td><td>+27.47</td><td>+17.20</td><td>+4.36</td><td>+2.37</td><td>+3.66</td></tr><tr><td>频域精修，− 脉冲分支（GN）</td><td>14,367</td><td>+18.15</td><td>+26.20</td><td>+16.83</td><td>+4.01</td><td>+1.11</td><td>+3.29</td></tr><tr><td>− 门控（改简单平均）</td><td>7,730</td><td>+9.50</td><td>+11.48</td><td>+8.01</td><td>-4.63</td><td>-13.62</td><td>-5.52</td></tr><tr><td>仅短时分支</td><td>3,794</td><td>+7.50</td><td>+11.99</td><td>+6.83</td><td>-6.64</td><td>-13.11</td><td>-6.71</td></tr><tr><td>仅长时分支</td><td>4,922</td><td>+9.11</td><td>+13.41</td><td>+8.51</td><td>-5.02</td><td>-11.69</td><td>-5.02</td></tr><tr><td>损失换 L1（去 Huber）</td><td>8,906</td><td>+11.34</td><td>+15.80</td><td>+9.89</td><td>-2.80</td><td>-9.29</td><td>-3.64</td></tr><tr><td>λ2=0.5（谱项主导）</td><td>8,906</td><td>+9.92</td><td>+13.94</td><td>+8.63</td><td>-4.21</td><td>-11.16</td><td>-4.90</td></tr>
+</tbody>
+<tfoot><tr><th colspan="5" style="text-align:right">Δ 为相对【阶段0 纯频域基线】的差（正 = 更好）</th>
+<th colspan="3"></th></tr></tfoot></table>
 <div class="box warn">
-<b>配对检验只消除"样本抽样"这一项不确定性，不消除"训练随机性"。</b>
-后者需要多随机种子重复训练才能量化，本实验未做（见局限）。
-因此显著性星号应理解为"在给定这两个训练好的模型下，差异在样本层面可靠"。
+<b>注意：本节数字是单种子 + BN，按第 3、5 节的结论，其绝对值带 2~3 dB 的选择偏差，
+只能用于比较【同一批训练内】的相对大小，不能当作精确效应量。</b>
+方向性结论仍然可靠：门控与多尺度双分支确有贡献（去门控干扰帧 −3.5 dB，
+仅短时/仅长时分别低 3.0/1.6 dB），而脉冲感知分支的贡献很小。
 </div>
-
-<h2>六、训练过程中的一个关键修正（保留在报告中）</h2>
-<div class="box bad">
-<b>初版实现失败过一次，必须记录。</b>第一版把脉冲感知分支做成乘性调制
-<code>F_mod = F_fuse ⊙ (1 + p_n)</code>，理由是"文档说该分支辅助特征融合"。
-结果：<br>
-<code>epoch 1  val帧增益 +3.94   p_imp=0.269  p_clean=0.061</code><br>
-<code>epoch 2  val帧增益 +4.13   p_imp=0.426  p_clean=0.016</code><br>
-<code>epoch 3  val帧增益 +5.71   p_imp=0.653  p_clean=0.008</code><br>
-改前那一版更糟：p 分离度变好的同时验证 SNR 从 +0.30 一路降到 −2.68 dB。<br>
-<b>诊断</b>：L_imp 的梯度经乘性门直接进入共享主干特征，模型用"扭曲主干"来降低掩码损失，
-牺牲了重建质量。<b>修正</b>：改为把 p 作为附加通道拼接，让残差头自行决定如何使用它。
-修正后验证帧增益单调上升至 10.90 dB。
-</div>
-
-<h2>七、独立复算</h2>
-<p><code>verify_pamnet.py</code> <b>不复用训练脚本的任何实现</b>：自己读 .mat、自己
-<code>resample_poly(1,4)</code>、自己实现 SNR / SI-SDR / 逐帧降噪增益，再与训练脚本
-产出的逐样本 CSV 对比。唯一共用的是模型定义本身（验证模型不可能绕开它的结构）。</p>
-<p>（见 verify_pamnet.py 输出）</p>
-
-<h2>八、局限</h2>
+<div class="box"><b>两个如实记录的负面结论：</b>
 <ul>
-<li><b>仍然是仿真数据。</b>α 稳定背景与突发干扰都是合成的，α 只取 1.5，突发幅度/时长
-范围是设定的。导师已说明会提供实测信号，届时需要重新验证。</li>
-<li><b>与阶段0 的对比含两个变量</b>：模型架构与损失函数同时变了（PAM-Net 必须配套新损失），
-因此"提升"不能单独归因于架构。消融表内部（同一损失下改架构）才是干净的因果证据。</li>
-<li><b>λ₂ 由量级校准确定，不是完整网格搜索。</b>只对照了 0.05 与 0.5 两个取值。</li>
+<li><b>Huber 不如普通 L1</b>（L1 高 +0.44/+0.79/+0.31 dB）。δ=0.2 与残差尺度相当，
+多数误差落在平方区，而 L1 本身就是稳健损失 —— Huber 相对 <b>MSE</b> 的稳健性优势
+在这里用不上。</li>
+<li><b>λ₂ 不能照搬 0.5</b>（0.05 相对 0.5 高 +0.98/+1.07/+0.95 dB）。</li>
+</ul></div>
+
+<h2>七、训练稳定性的完整数据</h2>
+<figure><img src="figures/pamnet/figL_stability.png" alt="图 L 逐轮验证指标的振荡与 best-checkpoint 的乐观偏差"><figcaption>图 L 逐轮验证指标的振荡与 best-checkpoint 的乐观偏差</figcaption></figure>
+<table>
+<thead><tr><th>run</th><th>逐轮 val 帧增益标准差 (dB)</th><th>最佳轮次</th><th>最佳−末5轮 (dB)</th></tr></thead>
+<tbody>
+<tr><td>pamnet</td><td>2.450</td><td>11</td><td>3.80</td></tr><tr><td>pamnet_freq</td><td>3.146</td><td>10</td><td>2.05</td></tr><tr><td>pamnet_freq_nopulse</td><td>1.857</td><td>5</td><td>2.48</td></tr><tr><td>pamnet_freq_nopulse_gn</td><td>0.705</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s2</td><td>0.916</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s3</td><td>0.881</td><td>15</td><td>0.08</td></tr><tr><td>pamnet_freq_nopulse_gn_s4</td><td>0.966</td><td>14</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s5</td><td>0.752</td><td>15</td><td>0.02</td></tr><tr><td>pamnet_freq_pf</td><td>1.483</td><td>13</td><td>1.29</td></tr><tr><td>pamnet_freq_pf_gn</td><td>0.831</td><td>15</td><td>0.08</td></tr><tr><td>pamnet_freq_pf_gn_s2</td><td>1.011</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_pf_gn_s3</td><td>1.164</td><td>15</td><td>0.04</td></tr><tr><td>pamnet_freq_pf_gn_s4</td><td>1.017</td><td>14</td><td>0.05</td></tr><tr><td>pamnet_freq_pf_gn_s5</td><td>3.495</td><td>15</td><td>0.05</td></tr><tr><td>pamnet_gn</td><td>0.677</td><td>15</td><td>0.05</td></tr><tr><td>pamnet_gn_s2</td><td>0.601</td><td>15</td><td>0.15</td></tr><tr><td>pamnet_gn_s3</td><td>0.437</td><td>15</td><td>0.02</td></tr><tr><td>pamnet_l1</td><td>2.638</td><td>6</td><td>4.08</td></tr><tr><td>pamnet_l2big</td><td>2.164</td><td>11</td><td>3.00</td></tr><tr><td>pamnet_long</td><td>1.435</td><td>4</td><td>2.53</td></tr><tr><td>pamnet_nogate</td><td>1.815</td><td>14</td><td>1.30</td></tr><tr><td>pamnet_nopulse</td><td>2.759</td><td>13</td><td>2.61</td></tr><tr><td>pamnet_nopulse_gn</td><td>0.779</td><td>14</td><td>0.03</td></tr><tr><td>pamnet_nopulse_gn_s2</td><td>0.640</td><td>13</td><td>0.05</td></tr><tr><td>pamnet_nopulse_gn_s3</td><td>0.307</td><td>15</td><td>0.03</td></tr><tr><td>pamnet_short</td><td>1.575</td><td>8</td><td>2.36</td></tr>
+</tbody></table>
+
+<h2>八、独立复算</h2>
+<p><code>verify_pamnet.py</code> <b>不复用训练脚本的任何实现</b>：自己读 .mat、
+自己 <code>resample_poly(1,4)</code>、自己实现 SNR / SI-SDR / 逐帧降噪增益，
+再与训练脚本产出的逐样本 CSV 对比。唯一共用的是模型定义本身
+（验证一个模型不可能绕开它的结构）。</p>
+<p>结果：<b>均值逐位吻合</b>；逐样本最大差 2.4e−3 dB，来自 STFT/ISTFT 在 float32 下的
+舍入放大。150 个样本<b>无一变差</b>（最差 +4.53 dB）。</p>
+
+<h2>九、局限</h2>
+<ul>
+<li><b>仍然是仿真数据。</b>α 稳定背景与突发干扰都是合成的，α 只取 1.5，
+突发幅度/时长范围是设定的。导师已说明会提供实测信号，届时需重新验证。</li>
+<li><b>种子数仍然偏少</b>（关键对照 3~5 个）。跨种子检验自由度很低，p 值只能作参考。
+要得到可靠的效应量，建议 5~10 个种子。</li>
+<li><b>与阶段0 的对比含多个变量</b>：架构与损失同时改变（PAM-Net 必须配套新损失），
+因此不能把提升单独归因于架构；消融表内部（同一损失下改架构）才是干净的因果证据。</li>
+<li><b>λ₂ 由量级校准确定，不是完整网格搜索</b>（只对照 0.05 与 0.5）。</li>
 <li><b>突发干扰直接叠加在信道输出上。</b>若干扰发生在信道之前，经多径会展宽成一串回声突发，
-难度完全不同——该场景未测。</li>
-<li><b>降采样 4 倍（24k→6k）对脉冲的衰减未做定量分解。</b>脉冲经抗混叠滤波会被削弱，
-而高斯噪声下同样的降采样带来 +6.19 dB 输入 SNR 增益。前端是否需要重新设计未验证。</li>
+难度完全不同 —— 该场景未测。</li>
+<li><b>降采样 4 倍对脉冲的衰减未做定量分解。</b>脉冲经抗混叠滤波会被削弱，
+而高斯噪声下同样的降采样带来 +6.19 dB 输入 SNR 增益。</li>
+<li><b>两个前端处理需要交代</b>：样本中位有效长度 6,031/8,000（约 24.6% 零填充）；
+降采样 4 倍把输入 SNR 从 0 dB 抬到 6.19 dB（高斯版）。</li>
 </ul>
 
-<h2>九、复现命令</h2>
-<pre># 1) 单元测试（参数量 / 形状 / 梯度 / 损失数值 / 频域分支等价性 / 感受野）
+<h2>十、复现命令</h2>
+<pre># 1) 单元测试（8 项，必须全过）
 python code/analysis/test_pamnet.py
-
-# 2) 损失量级校准（确定 λ2）
+# 2) 损失量级校准（确定 lambda2）
 python code/analysis/calibrate_loss.py
+# 3) 归一化诊断（解释为什么必须换 GroupNorm）
+python code/analysis/diagnose_bn.py --ckpt D:/project/output_pamnet/model_pamnet.pth
 
-# 3) 训练 + 消融（8 组，串行）
-python code/python/train_pamnet.py --tag pamnet          --data $D --epochs 15
-python code/python/train_pamnet.py --tag pamnet_nopulse  --data $D --epochs 15 --pulse 0
-python code/python/train_pamnet.py --tag pamnet_nogate   --data $D --epochs 15 --gate 0
-python code/python/train_pamnet.py --tag pamnet_short    --data $D --epochs 15 --long 0
-python code/python/train_pamnet.py --tag pamnet_long     --data $D --epochs 15 --short 0
-python code/python/train_pamnet.py --tag pamnet_l1       --data $D --epochs 15 --loss l1
-python code/python/train_pamnet.py --tag pamnet_freq     --data $D --epochs 15 --freq-refine 2.0
-python code/python/train_pamnet.py --tag pamnet_l2big    --data $D --epochs 15 --lam-spec 0.5
+# 4) 最终协议：GroupNorm + 多种子（关键 4 个配置；S 为空/s2/s3/s4/s5）
+D=D:/project/dataset_pam/alphastable
+python code/python/train_pamnet.py --tag pamnet_gn               --data $D --epochs 15 --norm gn
+python code/python/train_pamnet.py --tag pamnet_gn_s2            --data $D --epochs 15 --norm gn --seed 2
+python code/python/train_pamnet.py --tag pamnet_nopulse_gn       --data $D --epochs 15 --norm gn --pulse 0
+python code/python/train_pamnet.py --tag pamnet_freq_pf_gn       --data $D --epochs 15 --norm gn --freq-refine 2.0 --pulse-freq 1
+python code/python/train_pamnet.py --tag pamnet_freq_nopulse_gn  --data $D --epochs 15 --norm gn --freq-refine 2.0 --pulse 0
+# （其余种子同理，只改 --seed 与 --tag 后缀）
 
-# 4) 汇总出图 / 脉冲分支诊断 / 独立复算
-python code/analysis/analyze_pamnet.py
-python code/analysis/make_fig_pamnet_pulse.py --ckpt D:/project/output_pamnet/model_pamnet.pth
-python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet.pth --tag pamnet
+# 5) 分析与出图
+python code/analysis/analyze_seeds.py       # 多种子聚合 + 跨种子检验
+python code/analysis/analyze_stability.py   # 逐轮振荡与选择偏差
+python code/analysis/make_fig_seeds.py      # 图 M / 图 N
+python code/analysis/paired_test_pamnet.py  # 样本级配对检验
+python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth \
+    --tag pamnet_freq_pf --freq-refine 2.0 --pulse-freq 1
+python code/analysis/compare_baseline_pam.py
 </pre>
 
 <hr>
 <p style="font-size:12.5px;color:#6b7280">
-本报告由 <code>build_report_pamnet.py</code> 自动生成。所有数字来自
-<code>figs_pamnet/summary_pamnet.json</code> 与 <code>figs_pamnet/pulse_diag.json</code>。
+本报告由 <code>build_report_pamnet.py</code> 自动生成。数字来自 <code>figs_pamnet/</code> 下的
+summary_pamnet.json / seed_agg.json / pulse_diag.json / baseline_pam.json /
+paired_test.json / stability.json。
 </p>
 
 </div></body></html>

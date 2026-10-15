@@ -94,6 +94,7 @@ def main():
     ap.add_argument("--short", type=int, default=1)
     ap.add_argument("--long", type=int, default=1)
     ap.add_argument("--gate", type=int, default=1)
+    ap.add_argument("--norm", default="bn", choices=["bn", "gn", "in"])
     ap.add_argument("--freq-refine", type=float, default=0.0, dest="freq_refine")
     ap.add_argument("--pulse-freq", type=int, default=0, dest="pulse_freq")
     ap.add_argument("--n", type=int, default=120, help="复算多少样本")
@@ -102,6 +103,7 @@ def main():
     model = PN.PAMNet(c=A.c, use_short=bool(A.short), use_long=bool(A.long),
                       use_gate=bool(A.gate), use_pulse=bool(A.pulse),
                       freq_refine=A.freq_refine, pulse_freq=bool(A.pulse_freq),
+                      norm=A.norm,
                       n_fft=V3.CFG["n_fft"], hop=V3.CFG["hop_length"]).to(V3.DEVICE)
     model.load_state_dict(torch.load(A.ckpt, map_location=V3.DEVICE), strict=True)
     model.eval()

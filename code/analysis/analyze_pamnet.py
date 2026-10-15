@@ -29,11 +29,15 @@ plt.rcParams["font.size"] = 10
 
 # 变体顺序与显示名
 VARIANTS = [
-    ("pamnet", "PAM-Net 完整（纯时域）"),
-    ("pamnet_nopulse", "纯时域 − 脉冲感知分支"),
-    ("pamnet_freq", "PAM-Net + 频域精修"),
-    ("pamnet_freq_nopulse", "频域精修，− 脉冲分支"),
-    ("pamnet_freq_pf", "频域精修 + p 注入频域"),
+    ("pamnet", "PAM-Net 完整（纯时域，BN）"),
+    ("pamnet_nopulse", "纯时域 − 脉冲感知分支（BN）"),
+    ("pamnet_freq", "PAM-Net + 频域精修（BN）"),
+    ("pamnet_freq_nopulse", "频域精修，− 脉冲分支（BN）"),
+    ("pamnet_freq_pf", "频域精修 + p 注入频域（BN）"),
+    ("pamnet_gn", "PAM-Net 纯时域（GN）"),
+    ("pamnet_nopulse_gn", "纯时域 − 脉冲分支（GN）"),
+    ("pamnet_freq_pf_gn", "频域精修 + p 注入频域（GN）"),
+    ("pamnet_freq_nopulse_gn", "频域精修，− 脉冲分支（GN）"),
     ("pamnet_nogate", "− 门控（改简单平均）"),
     ("pamnet_short", "仅短时分支"),
     ("pamnet_long", "仅长时分支"),

@@ -1,0 +1,1078 @@
+{
+ "testA": {
+  "configs": {
+   "纯时域 +脉冲分支（GN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 9.584,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 9.0549,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 7.0427,
+     "frmgain_med": 11.9262,
+     "frmgain_clean": 11.2412,
+     "frmgain_imp": 17.8276,
+     "frmgain_imp_min": 10.1691,
+     "fmsnr_frac_bad_out": 0.2968,
+     "frac_imp": 0.156,
+     "params": 8906.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 9.3985,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 8.8511,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 6.7738,
+     "frmgain_med": 11.568,
+     "frmgain_clean": 10.9972,
+     "frmgain_imp": 17.5172,
+     "frmgain_imp_min": 9.83,
+     "fmsnr_frac_bad_out": 0.3113,
+     "frac_imp": 0.156,
+     "params": 8906.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 8.7534,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 8.1058,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 6.672,
+     "frmgain_med": 10.7175,
+     "frmgain_clean": 10.2988,
+     "frmgain_imp": 16.5125,
+     "frmgain_imp_min": 9.3975,
+     "fmsnr_frac_bad_out": 0.3359,
+     "frac_imp": 0.156,
+     "params": 8906.0,
+     "norm": "gn"
+    }
+   },
+   "纯时域 −脉冲分支（GN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 9.9374,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 9.5468,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 7.3546,
+     "frmgain_med": 12.682,
+     "frmgain_clean": 12.0229,
+     "frmgain_imp": 18.1573,
+     "frmgain_imp_min": 10.3938,
+     "fmsnr_frac_bad_out": 0.2829,
+     "frac_imp": 0.156,
+     "params": 8457.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 8.8315,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 8.181,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 6.9412,
+     "frmgain_med": 10.8577,
+     "frmgain_clean": 10.4254,
+     "frmgain_imp": 16.7531,
+     "frmgain_imp_min": 9.6155,
+     "fmsnr_frac_bad_out": 0.3341,
+     "frac_imp": 0.156,
+     "params": 8457.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 8.7983,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 8.1477,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 6.5584,
+     "frmgain_med": 10.4969,
+     "frmgain_clean": 10.0813,
+     "frmgain_imp": 16.6612,
+     "frmgain_imp_min": 9.4152,
+     "fmsnr_frac_bad_out": 0.339,
+     "frac_imp": 0.156,
+     "params": 8457.0,
+     "norm": "gn"
+    }
+   },
+   "频域精修 +p注入（GN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.8453,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.7601,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.4212,
+     "frmgain_med": 19.3042,
+     "frmgain_clean": 18.4991,
+     "frmgain_imp": 27.466,
+     "frmgain_imp_min": 17.1974,
+     "fmsnr_frac_bad_out": 0.17,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.7078,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.5828,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.3588,
+     "frmgain_med": 19.2436,
+     "frmgain_clean": 18.4449,
+     "frmgain_imp": 27.337,
+     "frmgain_imp_min": 17.042,
+     "fmsnr_frac_bad_out": 0.1762,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.9424,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.8469,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.4156,
+     "frmgain_med": 19.2693,
+     "frmgain_clean": 18.4336,
+     "frmgain_imp": 27.5157,
+     "frmgain_imp_min": 17.3341,
+     "fmsnr_frac_bad_out": 0.1738,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "4": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.3657,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.2483,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 13.9153,
+     "frmgain_med": 18.648,
+     "frmgain_clean": 17.8223,
+     "frmgain_imp": 27.1206,
+     "frmgain_imp_min": 16.8431,
+     "fmsnr_frac_bad_out": 0.1804,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "5": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.6292,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.6689,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.3217,
+     "frmgain_med": 19.0279,
+     "frmgain_clean": 18.13,
+     "frmgain_imp": 27.4474,
+     "frmgain_imp_min": 17.2082,
+     "fmsnr_frac_bad_out": 0.1669,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "gn"
+    }
+   },
+   "频域精修 −脉冲分支（GN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.3279,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.2094,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.027,
+     "frmgain_med": 18.9359,
+     "frmgain_clean": 18.146,
+     "frmgain_imp": 26.2012,
+     "frmgain_imp_min": 16.8278,
+     "fmsnr_frac_bad_out": 0.1884,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.7793,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.6757,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.4421,
+     "frmgain_med": 19.2883,
+     "frmgain_clean": 18.4671,
+     "frmgain_imp": 26.8817,
+     "frmgain_imp_min": 17.4514,
+     "fmsnr_frac_bad_out": 0.171,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.3873,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.2676,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 13.9817,
+     "frmgain_med": 19.0843,
+     "frmgain_clean": 18.1927,
+     "frmgain_imp": 26.7658,
+     "frmgain_imp_min": 17.1084,
+     "fmsnr_frac_bad_out": 0.1771,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "4": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.2275,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.249,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.044,
+     "frmgain_med": 18.7802,
+     "frmgain_clean": 17.9153,
+     "frmgain_imp": 26.5608,
+     "frmgain_imp_min": 17.0258,
+     "fmsnr_frac_bad_out": 0.1774,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "5": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.4746,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.4109,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.1396,
+     "frmgain_med": 18.8138,
+     "frmgain_clean": 17.9746,
+     "frmgain_imp": 26.5285,
+     "frmgain_imp_min": 17.088,
+     "fmsnr_frac_bad_out": 0.1874,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "gn"
+    }
+   },
+   "纯时域 +脉冲分支（BN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 7.4552,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 6.6023,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 5.9864,
+     "frmgain_med": 11.467,
+     "frmgain_clean": 10.9017,
+     "frmgain_imp": 15.0087,
+     "frmgain_imp_min": 9.5874,
+     "fmsnr_frac_bad_out": 0.3411,
+     "frac_imp": 0.156,
+     "params": 8906.0,
+     "norm": "bn"
+    }
+   },
+   "纯时域 −脉冲分支（BN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 7.2807,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 6.4836,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 6.3241,
+     "frmgain_med": 11.7602,
+     "frmgain_clean": 11.2827,
+     "frmgain_imp": 14.7218,
+     "frmgain_imp_min": 9.3795,
+     "fmsnr_frac_bad_out": 0.345,
+     "frac_imp": 0.156,
+     "params": 8457.0,
+     "norm": "bn"
+    }
+   },
+   "频域精修 +p注入（BN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 17.8304,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 17.7559,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 14.0143,
+     "frmgain_med": 19.3313,
+     "frmgain_clean": 18.4881,
+     "frmgain_imp": 27.788,
+     "frmgain_imp_min": 16.9269,
+     "fmsnr_frac_bad_out": 0.1312,
+     "frac_imp": 0.156,
+     "params": 14858.0,
+     "norm": "bn"
+    }
+   },
+   "频域精修 −脉冲分支（BN）": {
+    "1": {
+     "n": 1080.0,
+     "snr_in": -7.9633,
+     "snr_out": 15.7804,
+     "sisdr_in": -8.0076,
+     "sisdr_out": 15.6689,
+     "fmsnr_med_in": -4.6104,
+     "fmsnr_med_out": 11.0374,
+     "frmgain_med": 17.4753,
+     "frmgain_clean": 16.4948,
+     "frmgain_imp": 26.5231,
+     "frmgain_imp_min": 15.9645,
+     "fmsnr_frac_bad_out": 0.1364,
+     "frac_imp": 0.156,
+     "params": 14367.0,
+     "norm": "bn"
+    }
+   }
+  },
+  "pairs": {
+   "纯时域：+脉冲分支 − (−脉冲分支) [GN]": {
+    "frmgain_clean": {
+     "mean": 0.002533333333332758,
+     "se": 0.40523596555313035,
+     "t": 0.006251501714253972,
+     "p": 0.9955795639341086,
+     "n": 3,
+     "diffs": [
+      -0.7817000000000007,
+      0.5717999999999996,
+      0.21749999999999936
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.09523333333333284,
+     "se": 0.33849038062813186,
+     "t": 0.2813472369779303,
+     "p": 0.8048812124956319,
+     "n": 3,
+     "diffs": [
+      -0.329699999999999,
+      0.7640999999999991,
+      -0.1487000000000016
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": -0.009300000000000233,
+     "se": 0.12685566601456935,
+     "t": -0.07331166428886299,
+     "p": 0.9482303386786037,
+     "n": 3,
+     "diffs": [
+      -0.22470000000000034,
+      0.21449999999999925,
+      -0.017699999999999605
+     ]
+    },
+    "snr_out": {
+     "mean": 0.056233333333333135,
+     "se": 0.27046564990360217,
+     "t": 0.2079130320370646,
+     "p": 0.8545467885894988,
+     "n": 3,
+     "diffs": [
+      -0.3534000000000006,
+      0.5670000000000002,
+      -0.04490000000000016
+     ]
+    }
+   },
+   "频域精修：+p注入 − (−脉冲分支) [GN]": {
+    "frmgain_clean": {
+     "mean": 0.12683999999999998,
+     "se": 0.08232906291219351,
+     "t": 1.5406467110560795,
+     "p": 0.19825094941222407,
+     "n": 5,
+     "diffs": [
+      0.35309999999999775,
+      -0.022199999999998,
+      0.2408999999999999,
+      -0.09299999999999997,
+      0.1554000000000002
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.7897399999999998,
+     "se": 0.14294650258051084,
+     "t": 5.524724185225865,
+     "p": 0.005242546286028817,
+     "n": 5,
+     "diffs": [
+      1.264800000000001,
+      0.45530000000000115,
+      0.7499000000000002,
+      0.5597999999999992,
+      0.9188999999999972
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 0.024680000000000035,
+     "se": 0.14140983487721023,
+     "t": 0.17452817211356134,
+     "p": 0.8699279302788303,
+     "n": 5,
+     "diffs": [
+      0.3695999999999984,
+      -0.409399999999998,
+      0.2256999999999998,
+      -0.18270000000000053,
+      0.12020000000000053
+     ]
+    },
+    "snr_out": {
+     "mean": 0.2587600000000009,
+     "se": 0.12024303139891315,
+     "t": 2.151975020835509,
+     "p": 0.09776475027453978,
+     "n": 5,
+     "diffs": [
+      0.5174000000000021,
+      -0.07150000000000034,
+      0.5550999999999995,
+      0.1382000000000012,
+      0.15460000000000207
+     ]
+    }
+   },
+   "[BN 对照] 纯时域：+ − −": {
+    "frmgain_clean": {
+     "mean": -0.3810000000000002,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      -0.3810000000000002
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.28689999999999927,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.28689999999999927
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 0.20790000000000042,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.20790000000000042
+     ]
+    },
+    "snr_out": {
+     "mean": 0.1744999999999992,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.1744999999999992
+     ]
+    }
+   },
+   "[BN 对照] 频域：+ − −": {
+    "frmgain_clean": {
+     "mean": 1.9932999999999979,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      1.9932999999999979
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 1.2649000000000008,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      1.2649000000000008
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 0.9624000000000006,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.9624000000000006
+     ]
+    },
+    "snr_out": {
+     "mean": 2.0500000000000007,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      2.0500000000000007
+     ]
+    }
+   }
+  }
+ },
+ "testC": {
+  "configs": {
+   "纯时域 +脉冲分支（GN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 9.1696,
+     "sisdr_in": -8.31,
+     "sisdr_out": 8.6663,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.6938,
+     "frmgain_med": 11.5898,
+     "frmgain_clean": 10.8708,
+     "frmgain_imp": 18.019,
+     "frmgain_imp_min": 9.5908,
+     "fmsnr_frac_bad_out": 0.2731,
+     "frac_imp": 0.1551,
+     "params": 8906.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 9.0649,
+     "sisdr_in": -8.31,
+     "sisdr_out": 8.5513,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.679,
+     "frmgain_med": 11.4524,
+     "frmgain_clean": 10.8639,
+     "frmgain_imp": 17.9792,
+     "frmgain_imp_min": 9.4774,
+     "fmsnr_frac_bad_out": 0.2897,
+     "frac_imp": 0.1551,
+     "params": 8906.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 8.4045,
+     "sisdr_in": -8.31,
+     "sisdr_out": 7.7605,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.4452,
+     "frmgain_med": 10.6512,
+     "frmgain_clean": 10.1823,
+     "frmgain_imp": 17.0144,
+     "frmgain_imp_min": 9.044,
+     "fmsnr_frac_bad_out": 0.3219,
+     "frac_imp": 0.1551,
+     "params": 8906.0,
+     "norm": "gn"
+    }
+   },
+   "纯时域 −脉冲分支（GN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 9.4322,
+     "sisdr_in": -8.31,
+     "sisdr_out": 9.049,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.9626,
+     "frmgain_med": 12.2751,
+     "frmgain_clean": 11.5905,
+     "frmgain_imp": 18.3354,
+     "frmgain_imp_min": 9.7925,
+     "fmsnr_frac_bad_out": 0.2542,
+     "frac_imp": 0.1551,
+     "params": 8457.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 8.5215,
+     "sisdr_in": -8.31,
+     "sisdr_out": 7.9071,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.7599,
+     "frmgain_med": 10.8292,
+     "frmgain_clean": 10.3533,
+     "frmgain_imp": 17.2682,
+     "frmgain_imp_min": 9.239,
+     "fmsnr_frac_bad_out": 0.3185,
+     "frac_imp": 0.1551,
+     "params": 8457.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 8.4074,
+     "sisdr_in": -8.31,
+     "sisdr_out": 7.7581,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 6.3118,
+     "frmgain_med": 10.4596,
+     "frmgain_clean": 10.0105,
+     "frmgain_imp": 17.1227,
+     "frmgain_imp_min": 9.0456,
+     "fmsnr_frac_bad_out": 0.3241,
+     "frac_imp": 0.1551,
+     "params": 8457.0,
+     "norm": "gn"
+    }
+   },
+   "频域精修 +p注入（GN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.3565,
+     "sisdr_in": -8.31,
+     "sisdr_out": 16.2333,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 13.4145,
+     "frmgain_med": 18.2204,
+     "frmgain_clean": 17.4458,
+     "frmgain_imp": 25.9974,
+     "frmgain_imp_min": 15.3068,
+     "fmsnr_frac_bad_out": 0.1276,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.2464,
+     "sisdr_in": -8.31,
+     "sisdr_out": 16.1092,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 13.3035,
+     "frmgain_med": 18.0862,
+     "frmgain_clean": 17.3099,
+     "frmgain_imp": 25.6825,
+     "frmgain_imp_min": 15.1584,
+     "fmsnr_frac_bad_out": 0.1335,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.1312,
+     "sisdr_in": -8.31,
+     "sisdr_out": 16.0055,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 13.252,
+     "frmgain_med": 18.0872,
+     "frmgain_clean": 17.26,
+     "frmgain_imp": 25.7395,
+     "frmgain_imp_min": 15.3288,
+     "fmsnr_frac_bad_out": 0.1365,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "4": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 15.6718,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.551,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.5968,
+     "frmgain_med": 17.5188,
+     "frmgain_clean": 16.6935,
+     "frmgain_imp": 25.359,
+     "frmgain_imp_min": 15.0037,
+     "fmsnr_frac_bad_out": 0.1383,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "gn"
+    },
+    "5": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.093,
+     "sisdr_in": -8.31,
+     "sisdr_out": 16.0231,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 13.2449,
+     "frmgain_med": 17.9159,
+     "frmgain_clean": 17.0959,
+     "frmgain_imp": 25.9293,
+     "frmgain_imp_min": 15.3568,
+     "fmsnr_frac_bad_out": 0.1234,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "gn"
+    }
+   },
+   "频域精修 −脉冲分支（GN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 15.3532,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.2028,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.694,
+     "frmgain_med": 17.8244,
+     "frmgain_clean": 17.0091,
+     "frmgain_imp": 25.0564,
+     "frmgain_imp_min": 15.1237,
+     "fmsnr_frac_bad_out": 0.1434,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "2": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.2925,
+     "sisdr_in": -8.31,
+     "sisdr_out": 16.1996,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 13.3369,
+     "frmgain_med": 18.0975,
+     "frmgain_clean": 17.1914,
+     "frmgain_imp": 25.878,
+     "frmgain_imp_min": 15.9899,
+     "fmsnr_frac_bad_out": 0.1245,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "3": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 15.6489,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.5013,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.715,
+     "frmgain_med": 17.7807,
+     "frmgain_clean": 16.911,
+     "frmgain_imp": 25.4665,
+     "frmgain_imp_min": 15.2394,
+     "fmsnr_frac_bad_out": 0.1368,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "4": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 15.6207,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.6158,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.8162,
+     "frmgain_med": 17.5504,
+     "frmgain_clean": 16.6874,
+     "frmgain_imp": 25.2995,
+     "frmgain_imp_min": 15.2975,
+     "fmsnr_frac_bad_out": 0.1336,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "gn"
+    },
+    "5": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 15.7719,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.6434,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.8994,
+     "frmgain_med": 17.5683,
+     "frmgain_clean": 16.7083,
+     "frmgain_imp": 25.3828,
+     "frmgain_imp_min": 15.4924,
+     "fmsnr_frac_bad_out": 0.143,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "gn"
+    }
+   },
+   "纯时域 +脉冲分支（BN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 7.0053,
+     "sisdr_in": -8.31,
+     "sisdr_out": 6.053,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 5.6192,
+     "frmgain_med": 11.2111,
+     "frmgain_clean": 10.6041,
+     "frmgain_imp": 15.0503,
+     "frmgain_imp_min": 8.9648,
+     "fmsnr_frac_bad_out": 0.3268,
+     "frac_imp": 0.1551,
+     "params": 8906.0,
+     "norm": "bn"
+    }
+   },
+   "纯时域 −脉冲分支（BN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 6.8227,
+     "sisdr_in": -8.31,
+     "sisdr_out": 5.908,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 5.9365,
+     "frmgain_med": 11.3957,
+     "frmgain_clean": 10.9057,
+     "frmgain_imp": 14.6981,
+     "frmgain_imp_min": 8.7238,
+     "fmsnr_frac_bad_out": 0.3319,
+     "frac_imp": 0.1551,
+     "params": 8457.0,
+     "norm": "bn"
+    }
+   },
+   "频域精修 +p注入（BN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 16.0248,
+     "sisdr_in": -8.31,
+     "sisdr_out": 15.8913,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 12.3727,
+     "frmgain_med": 17.7137,
+     "frmgain_clean": 16.8774,
+     "frmgain_imp": 25.7082,
+     "frmgain_imp_min": 14.6047,
+     "fmsnr_frac_bad_out": 0.0971,
+     "frac_imp": 0.1551,
+     "params": 14858.0,
+     "norm": "bn"
+    }
+   },
+   "频域精修 −脉冲分支（BN）": {
+    "1": {
+     "n": 240.0,
+     "snr_in": -8.2654,
+     "snr_out": 13.4741,
+     "sisdr_in": -8.31,
+     "sisdr_out": 13.2892,
+     "fmsnr_med_in": -4.9114,
+     "fmsnr_med_out": 8.7192,
+     "frmgain_med": 15.0766,
+     "frmgain_clean": 14.0031,
+     "frmgain_imp": 24.4083,
+     "frmgain_imp_min": 13.3007,
+     "fmsnr_frac_bad_out": 0.1056,
+     "frac_imp": 0.1551,
+     "params": 14367.0,
+     "norm": "bn"
+    }
+   }
+  },
+  "pairs": {
+   "纯时域：+脉冲分支 − (−脉冲分支) [GN]": {
+    "frmgain_clean": {
+     "mean": -0.012433333333334554,
+     "se": 0.3669086913358387,
+     "t": -0.033886723391771824,
+     "p": 0.9760453439535794,
+     "n": 3,
+     "diffs": [
+      -0.7197000000000013,
+      0.5105999999999984,
+      0.1717999999999993
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.09543333333333237,
+     "se": 0.31359110496171766,
+     "t": 0.30432410812475885,
+     "p": 0.7896260886748594,
+     "n": 3,
+     "diffs": [
+      -0.31640000000000157,
+      0.7109999999999985,
+      -0.10829999999999984
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 0.011699999999999378,
+     "se": 0.12721984908024353,
+     "t": 0.09196678100615918,
+     "p": 0.9351067357472964,
+     "n": 3,
+     "diffs": [
+      -0.20170000000000066,
+      0.2383999999999986,
+      -0.0015999999999998238
+     ]
+    },
+    "snr_out": {
+     "mean": 0.09263333333333357,
+     "se": 0.23752470982568888,
+     "t": 0.38999451215544667,
+     "p": 0.734155485130904,
+     "n": 3,
+     "diffs": [
+      -0.26259999999999906,
+      0.5434000000000001,
+      -0.0029000000000003467
+     ]
+    }
+   },
+   "频域精修：+p注入 − (−脉冲分支) [GN]": {
+    "frmgain_clean": {
+     "mean": 0.259579999999999,
+     "se": 0.0836397716400517,
+     "t": 3.1035474500948617,
+     "p": 0.03609677261169991,
+     "n": 5,
+     "diffs": [
+      0.4366999999999983,
+      0.11849999999999739,
+      0.3490000000000002,
+      0.006099999999999994,
+      0.38759999999999906
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.32490000000000097,
+     "se": 0.19654931951039625,
+     "t": 1.653020223164984,
+     "p": 0.17367031744374312,
+     "n": 5,
+     "diffs": [
+      0.940999999999999,
+      -0.19549999999999912,
+      0.2729999999999997,
+      0.05950000000000344,
+      0.5465000000000018
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": -0.19767999999999972,
+     "se": 0.1791966947239821,
+     "t": -1.1031453470974317,
+     "p": 0.3318672834058182,
+     "n": 5,
+     "diffs": [
+      0.18310000000000137,
+      -0.8315000000000001,
+      0.08939999999999948,
+      -0.2937999999999992,
+      -0.13560000000000016
+     ]
+    },
+    "snr_out": {
+     "mean": 0.3623400000000004,
+     "se": 0.18582443757482506,
+     "t": 1.949905000272629,
+     "p": 0.12297059072657761,
+     "n": 5,
+     "diffs": [
+      1.0033000000000012,
+      -0.04609999999999914,
+      0.4823000000000004,
+      0.05109999999999992,
+      0.3210999999999995
+     ]
+    }
+   },
+   "[BN 对照] 纯时域：+ − −": {
+    "frmgain_clean": {
+     "mean": -0.30159999999999876,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      -0.30159999999999876
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 0.35219999999999985,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.35219999999999985
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 0.24099999999999966,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.24099999999999966
+     ]
+    },
+    "snr_out": {
+     "mean": 0.18259999999999987,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      0.18259999999999987
+     ]
+    }
+   },
+   "[BN 对照] 频域：+ − −": {
+    "frmgain_clean": {
+     "mean": 2.8743000000000016,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      2.8743000000000016
+     ]
+    },
+    "frmgain_imp": {
+     "mean": 1.299900000000001,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      1.299900000000001
+     ]
+    },
+    "frmgain_imp_min": {
+     "mean": 1.3039999999999985,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      1.3039999999999985
+     ]
+    },
+    "snr_out": {
+     "mean": 2.550699999999999,
+     "se": null,
+     "n": 1,
+     "diffs": [
+      2.550699999999999
+     ]
+    }
+   }
+  }
+ }
+}

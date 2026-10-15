@@ -67,13 +67,14 @@ def main():
     ap.add_argument("--data", default=r"D:/project/dataset_pam/alphastable")
     ap.add_argument("--split", default="testA")
     ap.add_argument("--c", type=int, default=24)
+    ap.add_argument("--norm", default="bn", choices=["bn", "gn", "in"])
     ap.add_argument("--freq-refine", type=float, default=0.0, dest="freq_refine")
     ap.add_argument("--pulse-freq", type=int, default=0, dest="pulse_freq")
     ap.add_argument("--max", type=int, default=400, help="最多用多少个样本统计")
     A = ap.parse_args()
 
     model = PN.PAMNet(c=A.c, n_fft=V3.CFG["n_fft"], hop=V3.CFG["hop_length"],
-                      freq_refine=A.freq_refine,
+                      freq_refine=A.freq_refine, norm=A.norm,
                       pulse_freq=bool(A.pulse_freq)).to(V3.DEVICE)
     sd = torch.load(A.ckpt, map_location=V3.DEVICE)
     missing = model.load_state_dict(sd, strict=True)
@@ -180,6 +181,8 @@ def main():
     with open(os.path.join(FIG, "pulse_diag.json"), "w", encoding="utf-8") as f:
         json.dump({"n_samples": int(len(aucs)),
                    "p_imp_mean": float(p_imp.mean()), "p_clean_mean": float(p_cln.mean()),
+                   "p_imp_median": float(np.median(p_imp)),
+                   "p_clean_median": float(np.median(p_cln)),
                    "auc_mean": float(aucs.mean()), "auc_median": float(np.median(aucs)),
                    "auc_p10": float(np.percentile(aucs, 10)),
                    "frac_auc_gt_08": float((aucs > 0.8).mean())}, f,

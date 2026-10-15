@@ -1,7 +1,7 @@
 {
  "variants": [
   {
-   "label": "PAM-Net 完整（纯时域）",
+   "label": "PAM-Net 完整（纯时域，BN）",
    "tag": "pamnet",
    "params": 8906,
    "A_clean": 10.9017,
@@ -14,7 +14,7 @@
    "C_snr": 7.0053
   },
   {
-   "label": "纯时域 − 脉冲感知分支",
+   "label": "纯时域 − 脉冲感知分支（BN）",
    "tag": "pamnet_nopulse",
    "params": 8457,
    "A_clean": 11.2827,
@@ -27,7 +27,7 @@
    "C_snr": 6.8227
   },
   {
-   "label": "PAM-Net + 频域精修",
+   "label": "PAM-Net + 频域精修（BN）",
    "tag": "pamnet_freq",
    "params": 14816,
    "A_clean": 16.3819,
@@ -40,7 +40,7 @@
    "C_snr": 13.1622
   },
   {
-   "label": "频域精修，− 脉冲分支",
+   "label": "频域精修，− 脉冲分支（BN）",
    "tag": "pamnet_freq_nopulse",
    "params": 14367,
    "A_clean": 16.4948,
@@ -53,7 +53,7 @@
    "C_snr": 13.4741
   },
   {
-   "label": "频域精修 + p 注入频域",
+   "label": "频域精修 + p 注入频域（BN）",
    "tag": "pamnet_freq_pf",
    "params": 14858,
    "A_clean": 18.4881,
@@ -64,6 +64,58 @@
    "C_imp": 25.7082,
    "C_impmin": 14.6047,
    "C_snr": 16.0248
+  },
+  {
+   "label": "PAM-Net 纯时域（GN）",
+   "tag": "pamnet_gn",
+   "params": 8906,
+   "A_clean": 11.2412,
+   "A_imp": 17.8276,
+   "A_impmin": 10.1691,
+   "A_snr": 9.584,
+   "C_clean": 10.8708,
+   "C_imp": 18.019,
+   "C_impmin": 9.5908,
+   "C_snr": 9.1696
+  },
+  {
+   "label": "纯时域 − 脉冲分支（GN）",
+   "tag": "pamnet_nopulse_gn",
+   "params": 8457,
+   "A_clean": 12.0229,
+   "A_imp": 18.1573,
+   "A_impmin": 10.3938,
+   "A_snr": 9.9374,
+   "C_clean": 11.5905,
+   "C_imp": 18.3354,
+   "C_impmin": 9.7925,
+   "C_snr": 9.4322
+  },
+  {
+   "label": "频域精修 + p 注入频域（GN）",
+   "tag": "pamnet_freq_pf_gn",
+   "params": 14858,
+   "A_clean": 18.4991,
+   "A_imp": 27.466,
+   "A_impmin": 17.1974,
+   "A_snr": 17.8453,
+   "C_clean": 17.4458,
+   "C_imp": 25.9974,
+   "C_impmin": 15.3068,
+   "C_snr": 16.3565
+  },
+  {
+   "label": "频域精修，− 脉冲分支（GN）",
+   "tag": "pamnet_freq_nopulse_gn",
+   "params": 14367,
+   "A_clean": 18.146,
+   "A_imp": 26.2012,
+   "A_impmin": 16.8278,
+   "A_snr": 17.3279,
+   "C_clean": 17.0091,
+   "C_imp": 25.0564,
+   "C_impmin": 15.1237,
+   "C_snr": 15.3532
   },
   {
    "label": "− 门控（改简单平均）",

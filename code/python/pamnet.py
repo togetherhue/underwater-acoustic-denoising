@@ -47,18 +47,44 @@ import torch.nn.functional as F
 
 
 # ============================== 基础模块 ==================================
+def make_norm(kind, c, dim):
+    """归一化层工厂。
+
+    kind='bn' : BatchNorm（依赖 batch 统计；train/eval 行为不同）
+    kind='gn' : GroupNorm（不依赖 batch，train/eval 完全一致）
+    kind='in' : InstanceNorm（逐样本逐通道，不依赖 batch）
+
+    【为什么需要这个开关】诊断发现：BN 的 running statistics 能把验证指标
+    推动 5.3 dB（原统计 11.46 / 重校准到训练集统计 6.14 / batch 统计 7.46），
+    而逐轮振荡的幅度是 2~3 dB —— 也就是说「最佳轮次」在很大程度上是在挑
+    归一化统计的运气，而不是挑权重质量。这会让 best-checkpoint 选择产生
+    与效应量同量级的乐观偏差。GN/IN 不依赖 batch 统计，train 与 eval 完全
+    一致，可消除这一来源。
+
+    属性名统一叫 `bn` 以保持与既有 checkpoint 的 state_dict 键名兼容。
+    """
+    if kind == "bn":
+        return nn.BatchNorm1d(c) if dim == 1 else nn.BatchNorm2d(c)
+    if kind == "gn":
+        g = max(1, min(c, 8 if c % 8 == 0 else (4 if c % 4 == 0 else 2 if c % 2 == 0 else 1)))
+        return nn.GroupNorm(g, c)
+    if kind == "in":
+        return nn.InstanceNorm1d(c, affine=True) if dim == 1 else nn.InstanceNorm2d(c, affine=True)
+    raise ValueError("未知归一化类型 " + str(kind))
+
+
 class DSConv1d(nn.Module):
-    """深度可分离一维卷积：DWConv -> Pointwise -> BN -> (ReLU)
+    """深度可分离一维卷积：DWConv -> Pointwise -> Norm -> (ReLU)
 
     padding = d*(k-1)//2 保证"same"长度（仅支持奇数 k）。
     """
 
-    def __init__(self, cin, cout, k=3, d=1, act=True):
+    def __init__(self, cin, cout, k=3, d=1, act=True, norm="bn"):
         super().__init__()
         assert k % 2 == 1, "只支持奇数卷积核"
         self.dw = nn.Conv1d(cin, cin, k, padding=d * (k - 1) // 2, dilation=d, groups=cin)
         self.pw = nn.Conv1d(cin, cout, 1)
-        self.bn = nn.BatchNorm1d(cout)
+        self.bn = make_norm(norm, cout, 1)
         self.act = act
 
     def forward(self, x):
@@ -69,11 +95,11 @@ class DSConv1d(nn.Module):
 class DSConv2d(nn.Module):
     """深度可分离二维卷积（仅供可选的频域精修分支使用）"""
 
-    def __init__(self, cin, cout, k=3, p=1):
+    def __init__(self, cin, cout, k=3, p=1, norm="bn"):
         super().__init__()
         self.dw = nn.Conv2d(cin, cin, k, padding=p, groups=cin)
         self.pw = nn.Conv2d(cin, cout, 1)
-        self.bn = nn.BatchNorm2d(cout)
+        self.bn = make_norm(norm, cout, 2)
 
     def forward(self, x):
         return F.relu(self.bn(self.pw(self.dw(x))))
@@ -83,9 +109,9 @@ class DSConv2d(nn.Module):
 class FeatureExtractor(nn.Module):
     """轻量化特征提取层：一维卷积 + 归一化 + 激活"""
 
-    def __init__(self, c):
+    def __init__(self, c, norm="bn"):
         super().__init__()
-        self.net = DSConv1d(1, c, k=7, d=1)
+        self.net = DSConv1d(1, c, k=7, d=1, norm=norm)
 
     def forward(self, x):
         return self.net(x)
@@ -94,11 +120,11 @@ class FeatureExtractor(nn.Module):
 class ShortBranch(nn.Module):
     """短时尺度分支：小核（k=3）两层，感受野 5，抓尖峰/脉冲/突发边缘"""
 
-    def __init__(self, c):
+    def __init__(self, c, norm="bn"):
         super().__init__()
         self.net = nn.Sequential(
-            DSConv1d(c, 2 * c, k=3, d=1),
-            DSConv1d(2 * c, c, k=3, d=1))
+            DSConv1d(c, 2 * c, k=3, d=1, norm=norm),
+            DSConv1d(2 * c, c, k=3, d=1, norm=norm))
 
     def forward(self, x):
         return self.net(x)
@@ -107,12 +133,12 @@ class ShortBranch(nn.Module):
 class LongBranch(nn.Module):
     """长时尺度分支：大核（k=7）+ 膨胀率 1/4/16，感受野 127，抓波形连续性与时序结构"""
 
-    def __init__(self, c, dilations=(1, 4, 16)):
+    def __init__(self, c, dilations=(1, 4, 16), norm="bn"):
         super().__init__()
         layers, cin = [], c
         for i, d in enumerate(dilations):
             cout = 2 * c if i == 0 else c
-            layers.append(DSConv1d(cin, cout, k=7, d=d))
+            layers.append(DSConv1d(cin, cout, k=7, d=d, norm=norm))
             cin = cout
         self.net = nn.Sequential(*layers)
         self.dilations = tuple(dilations)
@@ -136,10 +162,10 @@ class GatedFusion(nn.Module):
 class PulseBranch(nn.Module):
     """脉冲感知分支：p_n = σ(f_imp(F)_n)，逐点干扰置信度"""
 
-    def __init__(self, c):
+    def __init__(self, c, norm="bn"):
         super().__init__()
         self.net = nn.Sequential(
-            DSConv1d(c, max(1, c // 2), k=3, d=1),
+            DSConv1d(c, max(1, c // 2), k=3, d=1, norm=norm),
             nn.Conv1d(max(1, c // 2), 1, 1))
 
     def forward(self, f):
@@ -152,11 +178,11 @@ class ResidualHead(nn.Module):
     cin 允许接入脉冲置信度通道（见 PAMNet 中"脉冲感知辅助融合"的说明）。
     """
 
-    def __init__(self, c, cin=None):
+    def __init__(self, c, cin=None, norm="bn"):
         super().__init__()
         cin = c if cin is None else cin
         self.net = nn.Sequential(
-            DSConv1d(cin, max(1, c // 2), k=3, d=1),
+            DSConv1d(cin, max(1, c // 2), k=3, d=1, norm=norm),
             nn.Conv1d(max(1, c // 2), 1, 1))
 
     def forward(self, f):
@@ -175,7 +201,7 @@ class FreqRefine(nn.Module):
     这样脉冲感知是【喂进频域分支】而不是事后修形——更符合"辅助特征融合"的本意。
     """
 
-    def __init__(self, n_fft, hop, w=2.0, pulse_in=False):
+    def __init__(self, n_fft, hop, w=2.0, pulse_in=False, norm="bn"):
         super().__init__()
         self.n_fft, self.hop = n_fft, hop
         self.pulse_in = pulse_in
@@ -183,10 +209,11 @@ class FreqRefine(nn.Module):
         p1, p2 = max(1, round(8 * w)), max(1, round(4 * w))
         self.widths = (c1, c2, c3, p1, p2)
         self.mag_mask = nn.Sequential(
-            DSConv2d(1 + (1 if pulse_in else 0), c1, 3, 1), DSConv2d(c1, c2, 3, 1),
-            DSConv2d(c2, c3, 3, 1), nn.Conv2d(c3, 1, 1), nn.Sigmoid())
+            DSConv2d(1 + (1 if pulse_in else 0), c1, 3, 1, norm=norm),
+            DSConv2d(c1, c2, 3, 1, norm=norm),
+            DSConv2d(c2, c3, 3, 1, norm=norm), nn.Conv2d(c3, 1, 1), nn.Sigmoid())
         self.ph_corr = nn.Sequential(
-            DSConv2d(1, p1, 3, 1), DSConv2d(p1, p2, 3, 1),
+            DSConv2d(1, p1, 3, 1, norm=norm), DSConv2d(p1, p2, 3, 1, norm=norm),
             nn.Conv2d(p2, 1, 1), nn.Tanh())
 
     def forward(self, x, p=None):
@@ -220,34 +247,36 @@ class PAMNet(nn.Module):
 
     def __init__(self, c=24, use_short=True, use_long=True, use_gate=True,
                  use_pulse=True, freq_refine=0.0, n_fft=512, hop=128,
-                 pulse_freq=False):
+                 pulse_freq=False, norm="bn"):
         super().__init__()
         assert use_short or use_long, "至少要启用一条多尺度分支"
         assert not pulse_freq or (use_pulse and freq_refine > 0), \
             "pulse_freq 需要同时启用脉冲感知分支与频域精修"
         self.c = c
+        self.norm_kind = norm
         self.use_short, self.use_long = use_short, use_long
         self.use_gate, self.use_pulse = use_gate, use_pulse
         self.pulse_freq = pulse_freq
 
-        self.feat = FeatureExtractor(c)
+        self.feat = FeatureExtractor(c, norm=norm)
         if use_short:
-            self.short = ShortBranch(c)
+            self.short = ShortBranch(c, norm=norm)
         if use_long:
-            self.long = LongBranch(c)
+            self.long = LongBranch(c, norm=norm)
         if use_short and use_long and use_gate:
             self.gate = GatedFusion(c)
         if use_pulse:
-            self.pulse = PulseBranch(c)
+            self.pulse = PulseBranch(c, norm=norm)
         # 脉冲感知"辅助特征融合"的具体形式：
         #   把 p_n 作为附加通道拼到融合特征后，送入残差估计头。
         # 选用拼接而非乘性调制 (1+p)·F，原因是后者会把 L_imp 的梯度直接
         # 灌进共享主干特征，导致"为了拟合掩码而破坏重建"（首轮实验已观察到
         # 该现象：p 分离度变好的同时验证 SNR 反而下降）。拼接让残差头自行
         # 决定如何使用 p，credit assignment 更干净。
-        self.resid = ResidualHead(c, cin=c + (1 if use_pulse else 0))
+        self.resid = ResidualHead(c, cin=c + (1 if use_pulse else 0), norm=norm)
         if freq_refine and freq_refine > 0:
-            self.freq = FreqRefine(n_fft, hop, w=freq_refine, pulse_in=pulse_freq)
+            self.freq = FreqRefine(n_fft, hop, w=freq_refine, pulse_in=pulse_freq,
+                                   norm=norm)
         else:
             self.freq = None
 
