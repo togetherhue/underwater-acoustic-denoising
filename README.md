@@ -561,7 +561,19 @@ code/
     train_pam.py     脉冲噪声训练脚本（带干扰掩码、稳健指标）
     pamnet.py        PAM-Net 网络与联合损失（导师方案，含全部消融开关）
     train_pamnet.py  PAM-Net 训练/消融脚本（复用 train_pam 的数据与评估口径）
+
+    ---- 以下是被上述脚本 import 的库模块，缺一不可 ----
+    v3_model.py      模型/数据集/指标/损失（与 大创_v3.py 逐字节相同；
+                    train_pam/wave/fold 会在其缺失或过期时自动从 大创_v3.py 复制生成）
+    大创_v3.py    v3 模型定义（v3_model.py 的来源）
+    大创_v2.py    v2 模型定义（compare_baseline.py / make_figs.py 复用其 CFG）
+    pam_metrics.py   脉冲噪声下的稳健评估指标（逐帧降噪增益，按干扰掩码分解）
   analysis/         分析与出图脚本（纯 Python，含自写 .mat 解析器）
+
+> **运行方式**：脚本按自身位置推导路径
+> （`_HERE = os.path.dirname(os.path.abspath(__file__))`），
+> 并把 `../python` 加入 `sys.path`，因此克隆后可直接运行，无需改任何路径。
+> `code/python/` 下的训练脚本直接在其所在目录运行即可。
     mat_probe.py          纯 Python MATLAB v5 .mat 解析器（无 numpy 依赖）
     compare_baseline.py   与经典降噪方法对比
     channel_gain.py       信道物理特性与增益的关系

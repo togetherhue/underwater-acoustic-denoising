@@ -23,9 +23,14 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-PROJ = r"C:\Users\32213\PycharmProjects\project1"
-if PROJ not in sys.path:
-    sys.path.insert(0, PROJ)
+# 按脚本位置推导路径（不依赖本机目录），使仓库克隆后即可运行
+# ---- 路径解析：兼容仓库布局（库模块在 ../python）与本地开发布局 ----
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_CANDS = [os.path.normpath(os.path.join(_HERE, "..", "python")),
+          r"C:\Users\32213\PycharmProjects\project1"]
+for _p in [_HERE] + [c for c in _CANDS if os.path.isdir(c)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 import v3_model as V3          # noqa: E402
 import pamnet as PN            # noqa: E402
 from train_pam import PAMDataset   # noqa: E402

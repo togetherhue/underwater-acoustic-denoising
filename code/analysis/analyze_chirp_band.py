@@ -26,10 +26,13 @@ import scipy.io as sio
 from scipy.signal import resample_poly
 import torch
 
+# ---- 路径解析：兼容仓库布局（库模块在 ../python）与本地开发布局 ----
 _HERE = os.path.dirname(os.path.abspath(__file__))
-for p in (_HERE, r"C:\Users\32213\PycharmProjects\project1"):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+_CANDS = [os.path.normpath(os.path.join(_HERE, "..", "python")),
+          r"C:\Users\32213\PycharmProjects\project1"]
+for _p in [_HERE] + [c for c in _CANDS if os.path.isdir(c)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import v3_model as V3          # noqa: E402
 import pamnet as PN            # noqa: E402

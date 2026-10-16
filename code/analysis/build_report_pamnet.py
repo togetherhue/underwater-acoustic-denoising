@@ -35,6 +35,25 @@ def _try_json(name):
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
 
 
+# 适用边界（敏感性）实验：sens_out/sens_summary_<split>.json
+SENS = {}
+for _sp in ("testA", "testC"):
+    _p = os.path.join(HERE, "sens_out", "sens_summary_%s.json" % _sp)
+    if os.path.exists(_p):
+        SENS[_sp] = json.load(open(_p, encoding="utf-8"))
+
+# 等有效功率 SNR 的 α 重扫：sens_out/matched_<split>.json
+MATCHED = {}
+for _sp in ("testA", "testC"):
+    _p = os.path.join(HERE, "sens_out", "matched_%s.json" % _sp)
+    if os.path.exists(_p):
+        MATCHED[_sp] = json.load(open(_p, encoding="utf-8"))
+SENS_PD = None
+_pd = os.path.join(HERE, "sens_out", "pulse_diag_sens.json")
+if os.path.exists(_pd):
+    SENS_PD = json.load(open(_pd, encoding="utf-8"))
+
+
 LAD = _try_json("ladder.json")
 CB = _try_json("chirp_band.json")
 CBP = _try_json("chirp_band_paired.json")
@@ -271,6 +290,251 @@ if _lad:
         _step45_imp = _rn["frmgain_imp"] - _r4["frmgain_imp"]
         _ratio = _step34_imp / _step45_imp if abs(_step45_imp) > 1e-9 else float("nan")
 
+# ================= 适用边界（敏感性）实验 =================
+SENSA = SENS.get("testA")
+SENS_LBL = {"base": "α=1.5 / rate=5<br><span style='color:#6b7280'>训练条件</span>",
+            "a12_r5": "α=1.2 / rate=5", "a18_r5": "α=1.8 / rate=5",
+            "a20_r5": "α=2.0 / rate=5", "a15_r25": "α=1.5 / rate=2.5",
+            "a15_r10": "α=1.5 / rate=10", "gauss": "独立高斯数据 / rate=5"}
+SENS_CFG = {"R3_freqonly": "R3 纯频域掩码", "R4_freqrefine_nopulse": "R4 时域残差+频域精修",
+            "R5_freqrefine_pulse": "R5 R4 + 脉冲感知分支",
+            "P_time_pulse": "纯时域 PAM-Net", "P_time_nopulse": "纯时域（无脉冲分支）"}
+SENS_PAR = {"R3_freqonly": "5,910", "R4_freqrefine_nopulse": "14,367",
+            "R5_freqrefine_pulse": "14,858", "P_time_pulse": "8,906",
+            "P_time_nopulse": "8,457"}
+SENS_CFGS = ["R5_freqrefine_pulse", "R4_freqrefine_nopulse", "R3_freqonly",
+             "P_time_pulse", "P_time_nopulse"]
+SENS_ORDER = [c for c in ["a12_r5", "base", "a18_r5", "a20_r5", "a15_r25", "a15_r10", "gauss"]
+              if SENSA and c in SENSA.get("table", {})]
+
+rows_sens_main = ""
+rows_sens_pulse = ""
+rows_sens_arch = ""
+rows_sens_noise = ""
+rows_sens_degrade = ""
+sens_txt = dict(base_imp=float("nan"), base_cln=float("nan"), d_r10=float("nan"),
+                d_r25=float("nan"), d_a12=float("nan"), eff_a12=float("nan"),
+                eff_a20=float("nan"), eff_base=float("nan"), auc_base=float("nan"),
+                auc_a12=float("nan"), rank_ok="", frac_r10=float("nan"))
+
+if SENSA:
+    T = SENSA["table"]
+    for c in SENS_ORDER:
+        first = True
+        for cf in SENS_CFGS:
+            if cf not in T.get(c, {}):
+                continue
+            r = T[c][cf]
+            hl = " style='background:#eef4ff'" if cf == "R5_freqrefine_pulse" else ""
+            rows_sens_main += ("<tr%s><td>%s</td><td>%s</td><td>%s</td><td>%d</td>"
+                               "<td>%.2f</td><td>%.2f</td><td>%.2f</td></tr>"
+                               % (hl, SENS_LBL[c] if first else "", SENS_CFG[cf], SENS_PAR[cf],
+                                  r["n_seed"], r["clean"], r["imp"], r["imp_min"]))
+            first = False
+
+    for c in SENS_ORDER:
+        pe = SENSA["pulse_eff"].get(c)
+        if not pe:
+            continue
+        def _st(k):
+            d = pe[k]
+            star = ("***" if d["p"] < 0.001 else ("**" if d["p"] < 0.01
+                    else ("*" if d["p"] < 0.05 else "ns")))
+            return "%+.3f ± %.3f<br><span style='color:#6b7280;font-size:12px'>p≤%.1e %s</span>" % (
+                d["mean"], d["sd_over_seed"], d["p"], star)
+        rows_sens_pulse += ("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+                            % (SENS_LBL[c], _st("clean"), _st("imp"), _st("imp_min")))
+
+    for c in SENS_ORDER:
+        n = SENSA["noise"].get(c)
+        if not n:
+            continue
+        rows_sens_noise += ("<tr><td>%s</td><td>%.3f</td><td>%+.2f</td><td>%+.2f</td>"
+                            "<td>%+.2f</td><td>%.1f</td><td>%.2f</td></tr>"
+                            % (SENS_LBL[c], n["frac_imp"], n["snr_tot"], n["snr_bg"],
+                               n["snr_imp"], n["peak_over_rms"], n["p999_over_rms"]))
+
+    for c in SENS_ORDER:
+        aa = SENSA.get("arch_adv", {}).get(c)
+        if not aa:
+            continue
+        rows_sens_arch += ("<tr><td>%s</td><td>%+.2f ± %.2f</td><td>%+.2f ± %.2f</td>"
+                           "<td>%.1e</td></tr>"
+                           % (SENS_LBL[c], aa["clean"]["mean"], aa["clean"]["sd"],
+                              aa["imp"]["mean"], aa["imp"]["sd"], aa["imp"]["p"]))
+
+    for cf in SENS_CFGS:
+        d = SENSA["cond_delta"].get(cf)
+        if not d:
+            continue
+        row = "<tr><td>%s</td>" % SENS_CFG[cf]
+        for c in SENS_ORDER:
+            if c not in d:
+                row += "<td>—</td>"; continue
+            row += "<td>%+.2f ± %.2f</td>" % (d[c]["mean"], d[c].get("sd_over_seed", 0.0))
+        rows_sens_degrade += row + "</tr>"
+
+    if "base" in T and "R5_freqrefine_pulse" in T["base"]:
+        sens_txt["base_imp"] = T["base"]["R5_freqrefine_pulse"]["imp"]
+        sens_txt["base_cln"] = T["base"]["R5_freqrefine_pulse"]["clean"]
+    for c, key in (("a15_r10", "d_r10"), ("a15_r25", "d_r25"), ("a12_r5", "d_a12")):
+        if c in T and "R5_freqrefine_pulse" in T.get(c, {}):
+            sens_txt[key] = T[c]["R5_freqrefine_pulse"]["imp"] - sens_txt["base_imp"]
+    for c, key in (("a12_r5", "eff_a12"), ("a20_r5", "eff_a20"), ("base", "eff_base")):
+        if c in SENSA["noise"]:
+            sens_txt[key] = SENSA["noise"][c]["snr_bg"]
+    if "a15_r10" in SENSA["noise"]:
+        sens_txt["frac_r10"] = SENSA["noise"]["a15_r10"]["frac_imp"]
+    # 排序是否保持：R5 干扰帧最高；并检查 R5>R4>R3 的完整排序
+    r5_best, full_ok = [], []
+    for c in SENS_ORDER:
+        tt = T.get(c, {})
+        if not all(k in tt for k in ("R5_freqrefine_pulse", "R4_freqrefine_nopulse", "R3_freqonly")):
+            continue
+        r5_best.append(tt["R5_freqrefine_pulse"]["imp"] >= max(
+            tt[k]["imp"] for k in tt if k.startswith(("R3", "R4", "R5", "P_time"))))
+        full_ok.append(tt["R5_freqrefine_pulse"]["imp"] > tt["R4_freqrefine_nopulse"]["imp"]
+                       > tt["R3_freqonly"]["imp"])
+    sens_txt["rank_ok"] = ("全部 %d 个条件" % len(r5_best)) if r5_best and all(r5_best) else (
+        "%d/%d 个条件" % (sum(r5_best), len(r5_best)))
+    sens_txt["full_rank_ok"] = ("全部 %d 个条件" % len(full_ok)) if full_ok and all(full_ok) else (
+        "%d/%d 个条件" % (sum(full_ok), len(full_ok)))
+    if SENS_PD:
+        for c, key in (("base", "auc_base"), ("a12_r5", "auc_a12")):
+            dd = SENS_PD.get(c, {}).get("R5_freqrefine_pulse", {})
+            if dd:
+                k0 = sorted(dd.keys())[0]
+                sens_txt[key] = dd[k0]["auc_mean"]
+
+SENS_H = {"base": "α=1.5<br>rate=5", "a12_r5": "α=1.2<br>rate=5", "a18_r5": "α=1.8<br>rate=5",
+          "a20_r5": "α=2.0<br>rate=5", "a15_r25": "α=1.5<br>rate=2.5",
+          "a15_r10": "α=1.5<br>rate=10", "gauss": "高斯<br>rate=5"}
+sens_head = "".join("<th>%s</th>" % SENS_H[c] for c in SENS_ORDER)
+
+
+def _pe(c, k, f="mean"):
+    return SENSA["pulse_eff"][c][k][f] if SENSA and c in SENSA.get("pulse_eff", {}) else float("nan")
+
+
+def _aa(c, k="imp", f="mean"):
+    return SENSA["arch_adv"][c][k][f] if SENSA and c in SENSA.get("arch_adv", {}) else float("nan")
+
+
+def _tb(c, cf, f="imp"):
+    return SENSA["table"][c][cf][f] if SENSA and cf in SENSA.get("table", {}).get(c, {}) else float("nan")
+
+
+aucs_all = []
+if SENS_PD:
+    for c in SENS_ORDER:
+        d = SENS_PD.get(c, {}).get("R5_freqrefine_pulse", {})
+        for k in d:
+            aucs_all.append(d[k]["auc_mean"])
+sens_auc_lo = min(aucs_all) if aucs_all else float("nan")
+sens_auc_hi = max(aucs_all) if aucs_all else float("nan")
+
+sens_vars = dict(
+    d_a20=_pe("a20_r5", "imp"), d_a12=_pe("a12_r5", "imp"), p_a12=_pe("a12_r5", "imp", "p"),
+    d_r25=_pe("a15_r25", "imp"), d_r10=_pe("a15_r10", "imp"),
+    aa_a12=_aa("a12_r5"), aa_a20=_aa("a20_r5"), aa_gauss=_aa("gauss"),
+    r3_a12=_tb("a12_r5", "R3_freqonly"), r3_a20=_tb("a20_r5", "R3_freqonly"),
+    r5_a12=_tb("a12_r5", "R5_freqrefine_pulse"), r5_a20=_tb("a20_r5", "R5_freqrefine_pulse"),
+    deg_a12=abs(SENSA["cond_delta"]["R5_freqrefine_pulse"]["a12_r5"]["mean"]) if SENSA
+    and "a12_r5" in SENSA["cond_delta"].get("R5_freqrefine_pulse", {}) else float("nan"),
+    deg_a20=abs(SENSA["cond_delta"]["R5_freqrefine_pulse"]["a20_r5"]["mean"]) if SENSA
+    and "a20_r5" in SENSA["cond_delta"].get("R5_freqrefine_pulse", {}) else float("nan"),
+    deg_a20_r4=abs(SENSA["cond_delta"]["R4_freqrefine_nopulse"]["a20_r5"]["mean"]) if SENSA
+    and "a20_r5" in SENSA["cond_delta"].get("R4_freqrefine_nopulse", {}) else float("nan"),
+    auc_lo=sens_auc_lo, auc_hi=sens_auc_hi)
+
+MA = MATCHED.get("testA", {})
+MC = MATCHED.get("testC", {})
+M_ORDER = ["a12_r5", "m_a12", "base", "m_a18", "a18_r5"]
+M_LBL = {"a12_r5": "α=1.2<br><span style='color:#6b7280;font-size:12px'>未匹配</span>",
+         "m_a12": "α=1.2<br><span style='color:#6b7280;font-size:12px'>已匹配</span>",
+         "base": "α=1.5<br><span style='color:#6b7280;font-size:12px'>base</span>",
+         "m_a18": "α=1.8<br><span style='color:#6b7280;font-size:12px'>已匹配</span>",
+         "a18_r5": "α=1.8<br><span style='color:#6b7280;font-size:12px'>未匹配</span>"}
+
+rows_sens_matched = ""
+rows_sens_matched_arch = ""
+m_txt = dict()
+if MA:
+    PE = MA.get("pulse_eff", {})
+    AA = MA.get("arch_adv", {})
+
+    def _mrow(pe, key="imp"):
+        d = pe[key]
+        # LOO 只在干扰帧（imp）上计算过
+        if key == "imp" and "loo_min" in d and "loo_max" in d:
+            loo = (d["loo_min"], d["loo_max"])
+            loo_s = ("<br><span style='color:#6b7280;font-size:12px'>留一 [%+.2f, %+.2f]</span>" % loo
+                     if all(np.isfinite(v) for v in loo) else "")
+        else:
+            loo_s = ""
+        return "%+.3f ± %.3f<br><span style='color:#6b7280;font-size:12px'>p=%.4f</span>%s" % (
+            d["mean"], d["sd"], d["p"], loo_s)
+
+    for c in M_ORDER:
+        if c not in PE:
+            continue
+        rows_sens_matched += ("<tr><td>%s</td><td>%s</td><td>%s</td></tr>"
+                              % (M_LBL[c], _mrow(PE[c], "clean"), _mrow(PE[c], "imp")))
+    for c in M_ORDER:
+        if c not in AA:
+            continue
+        rows_sens_matched_arch += ("<tr><td>%s</td><td>%+.3f ± %.3f</td>"
+                                   "<td>%+.3f ± %.3f</td><td>%.1e</td></tr>"
+                                   % (M_LBL[c], AA[c]["clean"]["mean"], AA[c]["clean"]["sd"],
+                                      AA[c]["imp"]["mean"], AA[c]["imp"]["sd"], AA[c]["imp"]["p"]))
+
+    # 强度 / 尾形 分解
+    def _decomp(hi, lo, base="base"):
+        if not all(k in PE for k in (hi, lo, base)):
+            return None
+        b, u, m = PE[base]["imp"]["mean"], PE[lo]["imp"]["mean"], PE[hi]["imp"]["mean"]
+        tot_u, tot_m = u - b, m - b
+        return dict(base=b, um=u, m=m, tot_um=tot_u, tot_m=tot_m,
+                    inten=tot_u - tot_m, tail=tot_m)
+
+    m_txt = dict(a12=_decomp("m_a12", "a12_r5"), a18=_decomp("m_a18", "a18_r5"))
+    m_txt["noise"] = MA.get("noise", {})
+    m_txt["tc"] = None
+    if MC and MC.get("pulse_eff"):
+        tc = {}
+        for c in M_ORDER:
+            d = MC["pulse_eff"].get(c)
+            if d:
+                tc[c] = d["imp"]["mean"]
+        m_txt["tc"] = tc
+        m_txt["tc_arch"] = {c: v["imp"]["mean"] for c, v in MC.get("arch_adv", {}).items()
+                            if c in M_ORDER}
+    # 匹配条件的留一法范围（m_a12 / m_a18）
+    for k, cc in (("a12", "m_a12"), ("a18", "m_a18")):
+        if k in m_txt and cc in PE:
+            d = PE[cc]["imp"]
+            m_txt[k]["m_loo"] = (d.get("loo_min", float("nan")), d.get("loo_max", float("nan")))
+
+
+def _mn(cond, key):
+    """取匹配实验噪声表的一项：bg / imp / tot 来自 matched JSON，pk 来自 noise npz"""
+    d = m_txt.get("noise", {}).get(cond, {}) if m_txt else {}
+    if key == "pk":
+        p = os.path.join(HERE, "sens_out", "noise_%s.npz" % cond)
+        if os.path.exists(p):
+            return float(np.median(np.load(p)["testA"][:, 7]))
+        return float("nan")
+    return float(d.get(key, float("nan")))
+
+
+_mdelta = float("nan")
+if MA and MA.get("noise"):
+    _ds = []
+    for c in ("m_a12", "m_a18"):
+        if c in MA["noise"] and "base" in MA["noise"]:
+            _ds.append(abs(MA["noise"][c]["bg"] - MA["noise"]["base"]["bg"]))
+    _mdelta = max(_ds) if _ds else float("nan")
+
 concl = """<div class="box good"><b>① 按导师方案实现的 PAM-Net 可用，且远超全部经典方法。</b>
 纯时域版（8,906 参数，GroupNorm，{tdn} 种子均值）在 testA 上拿到干扰帧增益
 <b>{td_imp:.2f} ± {td_imp_s:.2f} dB</b>、干净帧 <b>{td_clean:.2f} ± {td_clean_s:.2f} dB</b>、
@@ -325,6 +589,24 @@ PAM-Net 与阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code> <b>架构逐位等价
 <b>干扰与信号的时频重叠率</b>（r = <b>{ov_r:+.3f}</b>，t = −4.11，p &lt; 0.001）：
 干扰越落在信号时频支撑<b>内</b>，分支收益越<b>小</b>。<b>带宽假设被否定</b>
 （chirp 8 与 chirp 19 带宽几乎相同，收益却差 1.7 dB）。详见第七节。</div>
+
+<div class="box warn"><b>⑦ 适用边界：排序稳、符号稳、但量级随条件起伏；且发现一个 SNR 定义的混杂。</b>
+把 5 个模型放到 7 个条件（α ∈ [1.2, 2.0] × 突发率 ∈ [2.5, 10]/s）上做零样本评估：
+<b>推荐模型 R5 在 {rank_ok} 的干扰帧增益上都排第一</b>
+（唯一例外详见 8.2：高斯背景上 R4 被 R3 反超，但 R5 仍最高），
+脉冲分支效应 Δ 的<b>符号在所有条件上一致为正</b>（量级 0.20~1.74 dB）。
+规律很清晰：<b>α 轴单调</b>（背景越脉冲化，收益从 +{sens_a20:.2f} 降到 +{sens_a12:.2f} dB，
+α=1.2 时跨种子不显著），<b>rate 轴反向</b>（突发越稀疏收益越大：2.5/s 时 +{sens_r25:.2f}，
+10/s 时 +{sens_r10:.2f}）—— 后者与第七节的时频重叠机制一致。
+架构优势 R5−R3 也从 α=1.2 的 +{aa_a12:.2f} dB 缩到高斯数据上的 +{aa_gauss:.2f} dB。
+<br><b>并用等有效功率 SNR 的重扫（8.1b）把 α 轴的混杂拆开</b>：单调趋势的<b>尾形成分是真实的</b>，
+但未匹配的 α 扫描<b>夸大了它的幅度</b>（α=1.2 端放大约 1.5 倍；α=1.8 端因强度成分反向
+而几乎掩盖了尾形的增强）。
+<br><b>更重要的方法论发现</b>：SNR 用"75% 分位数匹配"定义时，名义 SNR 固定
+并不代表有效功率 SNR 固定 —— α 从 2.0 降到 1.2，背景噪声的有效功率信噪比从
+<b>{eff_a20:+.2f} dB 掉到 {eff_a12:+.2f} dB</b>（差 {eff_gap:.1f} dB）。
+所以 α 扫描实际是"强度 + 形状"的联合偏移，不能单独解读为重尾程度的影响；
+真正的单因素操纵是突发率轴。详见第八节。</div>
 """.format(
     tdn=td[2], td_imp=td[0], td_imp_s=td[1], td_clean=tdc[0], td_clean_s=tdc[1],
     td_min=tdm[0], td_min_s=tdm[1], gap=gap, hy_imp=hy[0], hy_imp_s=hy[1],
@@ -341,7 +623,14 @@ PAM-Net 与阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code> <b>架构逐位等价
     c_hyc_p=(CT.get("频域精修：+p注入 − (−脉冲分支) [GN]", {}).get("frmgain_clean", {}).get("p", float("nan"))),
     proto_imp=_proto_imp, proto_min=_proto_min, arch_imp=_arch_imp, arch_min=_arch_min,
     proto_clean=_proto_clean, step34_imp=_step34_imp, step45_imp=_step45_imp, ratio=_ratio,
-    ov_r=_ov_r)
+    ov_r=_ov_r,
+    rank_ok=sens_txt["rank_ok"] or "—",
+    eff_a12=sens_txt["eff_a12"], eff_a20=sens_txt["eff_a20"],
+    eff_gap=(sens_txt["eff_a20"] - sens_txt["eff_a12"])
+    if np.isfinite(sens_txt["eff_a20"]) and np.isfinite(sens_txt["eff_a12"]) else float("nan"),
+    sens_a20=sens_vars["d_a20"], sens_a12=sens_vars["d_a12"],
+    sens_r25=sens_vars["d_r25"], sens_r10=sens_vars["d_r10"],
+    aa_a12=sens_vars["aa_a12"], aa_gauss=sens_vars["aa_gauss"])
 
 HTML = """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -668,7 +957,211 @@ __FIGO__
 <p><b>注意</b>：以上是"效应大小的调制因素"，不是"效应存在与否"。平均效应仍然很小
 （干扰帧 +0.37 dB），且高度依赖具体样本。</p>
 
-<h2>八、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
+<h2>八、适用边界：这套方法在什么条件下成立</h2>
+<p>前面所有结论都建立在<b>一个工作点</b>上：α = 1.5、突发到达率 5 次/秒。本节用
+<b>单因素轮换（OFAT）</b>设计，围绕该工作点各变一个方向，回答"结论能推到多远"。
+同时这一步也把上一节留下的问题（<b>脉冲感知分支在什么条件下才真正有价值</b>）
+放到一个可检验的框架里。</p>
+
+<table>
+<thead><tr><th>条件代号</th><th>α</th><th>突发到达率</th><th>改动的唯一因素</th><th>样本数（testA/testC）</th></tr></thead>
+<tbody>
+<tr><td>a12_r5</td><td>1.2</td><td>5 /s</td><td>背景噪声尾部更重</td><td>1,080 / 240</td></tr>
+<tr><td>a18_r5</td><td>1.8</td><td>5 /s</td><td>背景噪声更接近高斯</td><td>1,080 / 240</td></tr>
+<tr><td>a20_r5</td><td>2.0</td><td>5 /s</td><td>背景退化为高斯（内部一致性校验）</td><td>1,080 / 240</td></tr>
+<tr style="background:#f5f7fa"><td><b>base</b></td><td><b>1.5</b></td><td><b>5 /s</b></td><td><b>训练条件（基线）</b></td><td><b>1,080 / 240</b></td></tr>
+<tr><td>a15_r25</td><td>1.5</td><td>2.5 /s</td><td>突发干扰更稀疏</td><td>1,080 / 240</td></tr>
+<tr><td>a15_r10</td><td>1.5</td><td>10 /s</td><td>突发干扰更密集（2×）</td><td>1,080 / 240</td></tr>
+<tr><td>gauss</td><td>—</td><td>5 /s</td><td>独立生成的高斯对照数据集</td><td>1,080 / 240</td></tr>
+</tbody></table>
+
+<div class="box"><b>两个设计上的关键点，决定了这一节能否做因果解读：</b>
+<ul>
+<li><b>共同随机数</b>：数据生成用 <code>seed + 样本序号</code> 作种子，且各条件的循环顺序完全一致，
+因此样本序号 i 在所有条件下对应<b>同一</b> (chirp, 信道, SNR, 重复)。并且
+<b>α 轮换时突发干扰逐位相同、rate 轮换时背景噪声逐位相同</b>。
+于是条件之间的比较可以做<b>逐样本配对</b>，统计功效远高于独立样本。</li>
+<li><b>零样本 vs 域内</b>：模型全部在 base 上训练，本节先做<b>零样本跨条件评估</b>
+（这是分布偏移下的稳健性），再在关键条件上做<b>域内重训</b>（用来区分
+"分布偏移造成的退化"与"该条件下方法本身的优劣"）。</li>
+</ul></div>
+
+<h3>8.1 一个必须先讲清楚的混杂：名义 SNR 固定 ≠ 有效 SNR 固定</h3>
+<p>本项目的 SNR 定义是<b>75% 分位数匹配</b>（α &lt; 2 时方差无穷，无法用功率定义）。
+这个定义固定了噪声的"核心宽度"，但<b>没有固定它的二阶矩</b>。实测下来，
+α 每降一档，背景噪声的<b>有效功率信噪比</b>就掉一大截：</p>
+__FIGQ__
+<table>
+<thead><tr><th>条件</th><th>干扰帧占比</th><th>有效功率 SNR（总）</th><th>背景噪声有效 SNR</th>
+<th>干扰有效 SNR</th><th>背景峰/rms</th><th>背景 p99.9/rms</th></tr></thead>
+<tbody>
+__ROWS_SENS_NOISE__
+</tbody>
+<tfoot><tr><th colspan="7" style="text-align:right">
+有效 SNR = 10·log₁₀(P<sub>信号</sub>/P<sub>噪声分量</sub>)，在降采样 + 定长后的信号上按样本计算再取中位数；
+背景分量由 <code>v = noisy − clean − imp</code> 精确还原</th></tr></tfoot></table>
+<div class="box warn"><b>这是本轮最重要的方法论发现：把 α 从 2.0 降到 1.2，名义 SNR 不变，
+但背景噪声的有效功率信噪比从 <b>__EFF_A20__ dB 掉到 __EFF_A12__ dB</b>（相差
+__EFF_GAP__ dB）。</b>
+因此"α 扫描"实际上是<b>两个变量同时变</b>：尾部形状与噪声功率。
+任何把 α 扫描的结果直接解读为"重尾程度的影响"的结论都是不可靠的。
+本节的正确读法是：<b>未匹配的 α 轴 = 背景噪声强度 + 形状的联合偏移</b>，
+而 <b>rate 轴与等功率匹配的 α 条件</b>才是干净的单因素操纵
+（rate 轴：α 不变、背景噪声逐位相同，只有干扰密度翻倍；
+匹配 α 条件：有效功率 SNR 逐档对齐，只有尾形不同 —— 见 8.1b）。
+这一点在后续使用"分位数匹配"定义 SNR 的工作中同样需要注意。</div>
+
+<h3>8.1b 把混杂拆开：等有效功率 SNR 的 α 重扫</h3>
+<p>8.1 节只做到了"发现混杂"。真正要回答的是：<b>未匹配时看到的
+"α 越小脉冲分支收益越小"，是尾形本身造成的，还是噪声功率造成的？</b>
+做法是把名义 SNR 平移对应量，使<b>有效功率 SNR 与 base 一一对应</b>，
+从而把 α 的效应单独隔离出来。平移量按 shift 的<b>中位数</b>确定
+（比均值稳健 —— α 小时样本方差本身是重尾量）：</p>
+<table>
+<thead><tr><th>条件</th><th>α</th><th>名义 SNR 列表（dB）</th><th>平移量</th>
+<th>背景有效 SNR</th><th>干扰有效 SNR</th><th>背景峰/rms</th></tr></thead>
+<tbody>
+<tr><td>base</td><td>1.5</td><td>−10 −5 0 +5 +10</td><td>—（参照）</td>
+    <td>__MB0__</td><td>__MI0__</td><td>__MP0__</td></tr>
+<tr><td>m_a12</td><td>1.2</td><td>+3.07 +8.07 +13.07 +18.07 +23.07</td><td>+13.07</td>
+    <td>__MB1__</td><td>__MI1__</td><td>__MP1__</td></tr>
+<tr><td>m_a18</td><td>1.8</td><td>−20 −15 −10 −5 0</td><td>−10.00</td>
+    <td>__MB2__</td><td>__MI2__</td><td>__MP2__</td></tr>
+<tr><td>a12_r5</td><td>1.2</td><td>−10 −5 0 +5 +10</td><td>0（未匹配）</td>
+    <td>__MB3__</td><td>__MI3__</td><td>__MP3__</td></tr>
+<tr><td>a18_r5</td><td>1.8</td><td>−10 −5 0 +5 +10</td><td>0（未匹配）</td>
+    <td>__MB4__</td><td>__MI4__</td><td>__MP4__</td></tr>
+</tbody></table>
+<div class="box good"><b>匹配质量：两个"匹配条件"（m_a12 / m_a18）的背景有效功率 SNR 与 base 差
+__MDELTA__ dB（机器精度），干扰有效 SNR 也完全一致，只有背景峰/rms 不同
+（__MP0__ / __MP1__ / __MP2__）—— 正是要隔离的尾形。</b>
+此外样本序号、底层均匀随机数与突发实现在各条件间完全一致（同 seed、
+同 rms_c），构成逐样本配对。</div>
+
+<p>脉冲感知分支效应 Δ = R5 − R4（干扰帧，testA）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th></tr></thead>
+<tbody>
+__ROWS_SENS_MATCHED__
+</tbody></table>
+<p>架构优势 Δ = R5 − R3（testA）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>跨种子 p</th></tr></thead>
+<tbody>
+__ROWS_SENS_MATCHED_ARCH__
+</tbody></table>
+
+<div class="box warn"><b>判定：两者兼有，且两个方向的分解不对称。</b>
+<ul>
+<li><b>α=1.2 方向</b>（未匹配时效应被压低）：总变化 __MA12_TOT__ dB =
+强度成分 __MA12_INTEN__ dB + 尾形成分 __MA12_TAIL__ dB。
+即<b>强度解释约 __MA12_PCT__%</b>、<b>尾形解释约 __MA12_TPCT__%</b>。
+留一法确认均值不被单个种子主导（[__MA12_LOOMIN__, __MA12_LOOMAX__]）。</li>
+<li><b>α=1.8 方向</b>（未匹配时效应被抬高）：总变化 __MA18_TOT__ dB =
+强度成分 __MA18_INTEN__ dB + 尾形成分 __MA18_TAIL__ dB。
+这里<b>两个成分符号相反</b> —— 匹配掉"多余的有效信噪比"后，
+尾形本身的增强作用反而更明显。留一法范围 [__MA18_LOOMIN__, __MA18_LOOMAX__]，
+该条件受种子 0 影响较大，但去掉后仍为正值。</li>
+<li><b>共同结论</b>：<b>"背景越脉冲化，脉冲分支收益越小"这个单调趋势是真实的
+（尾形成分），但未匹配的 α 扫描把它的幅度夸大了</b> ——
+在 α=1.2 端放大了约 1.5 倍，在 α=1.8 端则因为强度成分反向而几乎掩盖了尾形的增强。
+因此报告 8.3 节的 α 轴结论应读作<b>尾形与强度的联合效应</b>，
+真正的单因素操纵是 8.1b 的匹配条件。</li>
+</ul></div>
+<p><b>testC（240 样本，功效更低）呈现同样的单调序</b>：匹配功率下
+α=1.2 的干扰帧效应 __TC_A12__ dB &lt; α=1.5 的 __TC_BASE__ dB &lt;
+α=1.8 的 __TC_A18__ dB；架构优势同样单调（__TC_ARCH_A12__ &gt; __TC_ARCH_BASE__
+&gt; __TC_ARCH_A18__）。方向一致，量级因样本量小而偏低。</p>
+
+<h3>8.2 模型排序在所有条件下都保持</h3>
+<p>把 5 个模型放到 7 个条件上评估（全部零样本，模型只在 base 上训练过）：</p>
+__FIGR__
+<table>
+<thead><tr><th>条件</th><th>模型</th><th>参数量</th><th>种子数</th><th>干净帧</th>
+<th>干扰帧</th><th>干扰最差</th></tr></thead>
+<tbody>
+__ROWS_SENS_MAIN__
+</tbody></table>
+<div class="box good"><b>结论：推荐模型 R5 在 <b>{rank_ok}</b> 的干扰帧增益上都是最高的。</b>
+在 6 个条件上完整的排序 <b>R5 &gt; R4 &gt; R3 &gt; 纯时域</b> 保持不变；
+唯一例外是<b>独立高斯数据集</b>（gauss）上 <b>R4（24.22 dB）被 R3（24.89 dB）反超</b>，
+即"时域残差通路"的优势消失了，但 R5（25.96 dB）仍高于两者。
+这个例外与 8.3 节的发现是同一件事的两面：<b>当背景退化为高斯、突发仍是唯一不可预测成分时，
+频域掩码（等价于可学习带通）的相对优势最强</b>。这说明
+"时域残差与频域掩码互补、纯时域结构缺少带限先验"这一机制性结论
+<b>在背景为脉冲性的全部场景下成立</b>，但不能外推到高斯背景。</div>
+
+<h3>8.3 脉冲感知分支：收益随条件如何变化</h3>
+<p>把 <b>Δ = R5 − R4</b>（同种子内逐样本配对，再跨种子汇总）在 7 个条件上分别算出来：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>干扰最差 Δ (dB)</th></tr></thead>
+<tbody>
+__ROWS_SENS_PULSE__
+</tbody>
+<tfoot><tr><th colspan="4" style="text-align:right">
+Δ 的 ± 为种子间标准差；p 为对【逐种子效应量】做单样本 t 检验的 p（自由度 = 种子数 − 1）。
+这个口径比种子内逐样本配对（n≈1080）更保守 —— 后者只消除样本抽样，
+前者才反映训练随机性；两者结论一致时才能说效应稳健。</th></tr></tfoot></table>
+
+<div class="box"><b>读法：规律非常清楚，且与上一节的机制一致 ——</b>
+<ul>
+<li><b>α 轴单调</b>：背景越脉冲化（α 从 2.0 降到 1.2），分支收益从
+<b>__SENS_A20__ dB 一路降到 __SENS_A12__ dB</b>（α=1.2 时跨种子检验不显著，p=__SENS_PA12__）。
+背景噪声本身就有重尾时，残差误差被背景主导，而脉冲分支监督的是<b>突发干扰掩码</b>，
+"知道突发在哪里"对总误差的边际贡献自然变小。</li>
+<li><b>rate 轴反向</b>：突发越稀疏（2.5/s）收益反而最大（<b>__SENS_R25__ dB</b>），
+突发越密（10/s）收益最小（<b>__SENS_R10__ dB</b>）。
+这<b>与"冗余假设"的朴素预测相反</b>（不是"掩码应付不过来了所以分支才有用"），
+而是与第七节的时频重叠机制一致：干扰越密，落在信号时频支撑<b>内</b>的概率越大，
+掩码无法在不伤信号的前提下压制它，"知道哪里是脉冲"也帮不上。</li>
+<li><b>符号在所有条件上一致为正</b>（唯一例外是 α=1.2 的干扰最差帧 −0.05 dB，
+本身也不显著），说明这不是只在特定条件下成立的偶然效应；但量级始终落在
+0.2~1.7 dB 这个"小效应"区间。</li>
+</ul></div>
+
+<p>再把这套时域通路 + 脉冲注入的<b>整体架构优势</b>拆出来 ——
+Δ = R5 − R3（相对纯频域掩码）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>跨种子 p</th></tr></thead>
+<tbody>
+__ROWS_SENS_ARCH__
+</tbody>
+<tfoot><tr><th colspan="4" style="text-align:right">
+纯频域掩码（R3）的干扰帧增益在 α=1.2 时只有 __SENS_R3A12__ dB、α=2.0 时 __SENS_R3A20__ dB，
+而 R5 在两端都稳定在 __SENS_R5A12__ / __SENS_R5A20__ dB 附近</th></tr></tfoot></table>
+<div class="box warn"><b>架构优势同样随 α 增大而缩小</b>：从 α=1.2 的 <b>__SENS_AA12__ dB</b>
+降到 α=2.0 的 <b>__SENS_AA20__ dB</b>、独立高斯数据集上的 <b>__SENS_AAGAUSS__ dB</b>。
+也就是说：<b>这套架构的额外价值主要来自"干扰是可分离的脉冲/突发"这一前提</b>；
+当背景退化为高斯时，频域掩码（等价于可学习带通）的相对优势最强。
+这不是缺陷，但必须写进论文的适用条件，否则结论会被外推到不适用的场景。</div>
+
+<h3>8.4 条件间退化（共同随机数逐样本配对）</h3>
+<p>下表是各模型在异常条件下相对 base 的<b>干扰帧增益变化</b>，负值表示退化。
+因为各条件共享同一批 (chirp, 信道, SNR, 重复)，这里是逐样本配对的结果，
+比独立样本灵敏得多。</p>
+<table>
+<thead><tr><th>模型</th>__SENS_HEAD__</tr></thead>
+<tbody>
+__ROWS_SENS_DEGRADE__
+</tbody>
+<tfoot><tr><th colspan="8" style="text-align:right">
+± 为种子间标准差；负值 = 该条件下干扰帧增益低于 base。注意 α 轴各条件的干扰强度本身就不同
+（见表 8.1），所以这里的"退化"同时包含难度变化</th></tr></tfoot></table>
+<div class="box"><b>两点值得注意：</b>① <b>R5 在整个 α 轴上的退化最小</b>
+（α=1.2 时 −__SENS_DEG12__ dB、α=2.0 时 −__SENS_DEG20__ dB），而 R4 在 α=2.0 时退化到
+−__SENS_DEG20R4__ dB —— 脉冲分支在高 α 端提供了额外的稳健性；<br>
+② <b>α=1.2 时所有模型的干扰帧增益都明显偏低</b>（R3 只有 23.26 dB），
+但这是<b>噪声更强（有效 SNR −16.4 dB）造成的难度变化</b>，不是模型退化。</div>
+
+<h3>8.5 判别能力与性能收益的关系（跨条件检验）</h3>
+__FIGT__
+<p>横轴是该分支把 p<sub>n</sub> 当作脉冲检测器时的逐样本 AUC（越高越能准确标出脉冲位置），
+纵轴是它带来的干扰帧增益。上一节在单工作点上得到的"<b>能识别 ≠ 能提升性能</b>"
+在本节被推广到全部条件：<b>AUC 在 7 个条件上稳定在 __SENS_AUCLO__~__SENS_AUCHI__</b>
+（变化不到 0.04），<b>而性能收益却在 0.20~1.74 dB 之间起伏</b>。
+这进一步说明两者的解耦不是工作点的偶然现象，而是结构性的。</p>
+
+<h2>九、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
 __FIGJ__
 <table>
 <thead><tr><th>变体</th><th>参数</th><th>干净帧 (dB)</th><th>干扰帧 (dB)</th>
@@ -692,7 +1185,7 @@ __ROWS_ABL__
 <li><b>λ₂ 不能照搬 0.5</b>（0.05 相对 0.5 高 +0.98/+1.07/+0.95 dB）。</li>
 </ul></div>
 
-<h2>九、训练稳定性的完整数据</h2>
+<h2>十、训练稳定性的完整数据</h2>
 __FIGL__
 <table>
 <thead><tr><th>run</th><th>逐轮 val 帧增益标准差 (dB)</th><th>最佳轮次</th><th>最佳−末5轮 (dB)</th></tr></thead>
@@ -700,7 +1193,7 @@ __FIGL__
 __ROWS_STAB__
 </tbody></table>
 
-<h2>十、独立复算</h2>
+<h2>十一、独立复算</h2>
 <p><code>verify_pamnet.py</code> <b>不复用训练脚本的任何实现</b>：自己读 .mat、
 自己 <code>resample_poly(1,4)</code>、自己实现 SNR / SI-SDR / 逐帧降噪增益，
 再与训练脚本产出的逐样本 CSV 对比。唯一共用的是模型定义本身
@@ -708,7 +1201,7 @@ __ROWS_STAB__
 <p>结果：<b>均值逐位吻合</b>；逐样本最大差 2.4e−3 dB，来自 STFT/ISTFT 在 float32 下的
 舍入放大。150 个样本<b>无一变差</b>（最差 +4.53 dB）。</p>
 
-<h2>十一、局限</h2>
+<h2>十二、局限</h2>
 <ul>
 <li><b>仍然是仿真数据。</b>α 稳定背景与突发干扰都是合成的，α 只取 1.5，
 突发幅度/时长范围是设定的。导师已说明会提供实测信号，届时需重新验证。</li>
@@ -733,9 +1226,30 @@ __ROWS_STAB__
 而高斯噪声下同样的降采样带来 +6.19 dB 输入 SNR 增益。</li>
 <li><b>两个前端处理需要交代</b>：样本中位有效长度 6,031/8,000（约 24.6% 零填充）；
 降采样 4 倍把输入 SNR 从 0 dB 抬到 6.19 dB（高斯版）。</li>
+<li><b>（第八节新增）α 扫描的 SNR 定义混杂已量化，并已用等功率重扫拆开。</b>
+分位数匹配让 α 与有效噪声功率同时变化（−16.4 vs +10.8 dB）。
+8.1b 把名义 SNR 平移对应量做了等有效功率重扫，得到：
+<b>α=1.2 端"收益被压低"里强度解释约 35%、尾形解释约 65%</b>；
+α=1.8 端两成分符号相反（强度 −0.60 dB、尾形 +0.98 dB）。
+即单调趋势真实，但未匹配的 α 扫描夸大了幅度。
+剩余缺口：<b>匹配条件只覆盖 α=1.2 与 α=1.8 两个点</b>（α=2.0 需名义 SNR 低至 −24 dB，未做）。</li>
+<li><b>（第八节新增）域内重训只安排了 rate=10 一个条件，且因进程被环境回收而中断。</b>
+本节的零样本矩阵与等功率重扫只能回答"分布偏移下的稳健性"与"尾形 vs 强度"，
+不能区分"分布偏移造成的退化"与"该条件下方法本身的优劣"。
+α=1.2 的域内重训同样缺失。脚本 <code>run_sens_train.sh</code> 已就绪，
+但每次运行须用受管的后台机制启动（裸 <code>nohup &amp;</code> 的进程会被回收）。</li>
+<li><b>（第八节新增）"能识别 ≠ 能提升性能"的因果链未闭环。</b>
+我们证明了判别能力（AUC 0.93~0.96）跨条件几乎不变、而收益跨条件变化 0.2~1.7 dB，
+也证明了收益与时频重叠率负相关；但<b>没有</b>做"人为制造重叠"的干预实验，
+因此"重叠→收益下降"仍是相关而非因果。</li>
+<li><b>（第八节新增）含时域分支的模型，逐样本指标无法从 checkpoint 逐位复现。</b>
+最大差 ≤0.13 dB、均值 ≤0.003 dB（纯频域模型仅 5e-5 dB），
+原因是时域通路对 1e-7 量级浮点归约差异的放大。
+所有聚合指标复现误差 ≤0.001 dB，本研究结论基于聚合指标，不受影响；
+但任何以逐样本 CSV 为依据的复核会看到非零残差。</li>
 </ul>
 
-<h2>十二、复现命令</h2>
+<h2>十三、复现命令</h2>
 <pre># 1) 单元测试（8 项，必须全过）
 python code/analysis/test_pamnet.py
 # 2) 损失量级校准（确定 lambda2）
@@ -781,13 +1295,46 @@ python code/analysis/paired_test_pamnet.py  # 样本级配对检验
 python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth \\
     --tag pamnet_freq_pf --freq-refine 2.0 --pulse-freq 1
 python code/analysis/compare_baseline_pam.py
+
+# 8) 适用边界（敏感性）：5 个条件的数据集（单因素轮换，共同随机数）
+#   MATLAB（一次生成全部条件；--conds 可只跑部分）:
+#   gen_sensitivity([1 2 3 4 5])          % a12_r5 / a18_r5 / a20_r5 / a15_r25 / a15_r10
+#   % 基线条件直接用 D:/project/dataset_pam/alphastable；高斯对照用 dataset_pam/gauss
+
+# 9) 零样本跨条件评估（含逐样本逐种子结果）
+python code/analysis/eval_sensitivity.py --prep            # 预处理 + 噪声功率分解
+python code/analysis/eval_sensitivity.py --verify          # 口径校验：与存档 CSV 逐位比对
+python code/analysis/eval_sensitivity.py --nshard 6 --shard 0     # 6 路并行，支持断点续跑
+
+# 10) 统计分析与出图
+python code/analysis/analyze_sensitivity.py --split testA  # 表1~表5 + 汇总 JSON + 扁平 CSV
+python code/analysis/analyze_sensitivity.py --split testC
+python code/analysis/make_fig_sensitivity.py               # 图 Q / R / S / T
+python code/analysis/diagnose_pulse_sens.py --max 300      # 脉冲分支 AUC 跨条件
+
+# 11) 域内重训（区分"分布偏移"与"方法本身优劣"；后台跑）
+#     注意：必须用受管的后台机制启动（见下方 run_in_background），
+#     裸 nohup & 的进程会被环境回收
+bash code/analysis/run_sens_train.sh            # a15_r10 上 R4/R5 × 3 种子
+
+# 12) 等有效功率 SNR 的 α 重扫（把 α 与噪声强度解耦）
+#   MATLAB（先算 shift，见 analyze_matched.py 第 1 步的输出）:
+#   gen_sensitivity_matched([1 2])   % m_a12 (α=1.2, 名义 +13.07) / m_a18 (α=1.8, 名义 −10.00)
+python code/analysis/eval_sensitivity.py --prep --conds m_a12 m_a18
+python code/analysis/eval_sensitivity.py --conds m_a12 m_a18 \
+    --configs R3_freqonly R4_freqrefine_nopulse R5_freqrefine_pulse \
+    --nshard 3 --shard 0     # 3 路并行
+python code/analysis/analyze_matched.py --split testA   # 强度/尾形分解 + 留一法
+python code/analysis/analyze_matched.py --split testC
 </pre>
 
 <hr>
 <p style="font-size:12.5px;color:#6b7280">
 本报告由 <code>build_report_pamnet.py</code> 自动生成。数字来自 <code>figs_pamnet/</code> 下的
 summary_pamnet.json / seed_agg.json / pulse_diag.json / baseline_pam.json /
-paired_test.json / stability.json / ladder.json / chirp_band.json / chirp_band_paired.json。
+paired_test.json / stability.json / ladder.json / chirp_band.json / chirp_band_paired.json，
+以及 <code>sens_out/</code> 下的 sens_summary_testA.json / sens_summary_testC.json /
+pulse_diag_sens.json（适用边界实验）。
 </p>
 
 </div></body></html>
@@ -806,6 +1353,85 @@ HTML = (HTML
         .replace("__ROWS_LADDER__", rows_ladder)
         .replace("__ROWS_STEP__", rows_step)
         .replace("__ROWS_CHIRP__", rows_chirp)
+        .replace("__ROWS_SENS_MAIN__", rows_sens_main)
+        .replace("__ROWS_SENS_PULSE__", rows_sens_pulse)
+        .replace("__ROWS_SENS_ARCH__", rows_sens_arch)
+        .replace("__ROWS_SENS_NOISE__", rows_sens_noise)
+        .replace("__ROWS_SENS_DEGRADE__", rows_sens_degrade)
+        .replace("__SENS_HEAD__", sens_head)
+        .replace("__SENS_A20__", "%+.2f" % sens_vars["d_a20"])
+        .replace("__SENS_A12__", "%+.2f" % sens_vars["d_a12"])
+        .replace("__SENS_PA12__", "%.2f" % sens_vars["p_a12"])
+        .replace("__SENS_R25__", "%+.2f" % sens_vars["d_r25"])
+        .replace("__SENS_R10__", "%+.2f" % sens_vars["d_r10"])
+        .replace("__SENS_AA12__", "%+.2f" % sens_vars["aa_a12"])
+        .replace("__SENS_AA20__", "%+.2f" % sens_vars["aa_a20"])
+        .replace("__SENS_AAGAUSS__", "%+.2f" % sens_vars["aa_gauss"])
+        .replace("__SENS_R3A12__", "%.2f" % sens_vars["r3_a12"])
+        .replace("__SENS_R3A20__", "%.2f" % sens_vars["r3_a20"])
+        .replace("__SENS_R5A12__", "%.2f" % sens_vars["r5_a12"])
+        .replace("__SENS_R5A20__", "%.2f" % sens_vars["r5_a20"])
+        .replace("__SENS_DEG12__", "%.2f" % sens_vars["deg_a12"])
+        .replace("__SENS_DEG20__", "%.2f" % sens_vars["deg_a20"])
+        .replace("__SENS_DEG20R4__", "%.2f" % sens_vars["deg_a20_r4"])
+        .replace("__SENS_AUCLO__", "%.3f" % sens_vars["auc_lo"])
+        .replace("__SENS_AUCHI__", "%.3f" % sens_vars["auc_hi"])
+        .replace("__EFF_A20__", "%+.2f" % (sens_txt["eff_a20"] if SENSA else float("nan")))
+        .replace("__EFF_A12__", "%+.2f" % (sens_txt["eff_a12"] if SENSA else float("nan")))
+        .replace("__EFF_GAP__", "%.1f" % ((sens_txt["eff_a20"] - sens_txt["eff_a12"])
+                                          if SENSA and np.isfinite(sens_txt["eff_a20"])
+                                          and np.isfinite(sens_txt["eff_a12"]) else float("nan")))
+        # ---- 等功率匹配（8.1b）----
+        .replace("__ROWS_SENS_MATCHED__", rows_sens_matched)
+        .replace("__ROWS_SENS_MATCHED_ARCH__", rows_sens_matched_arch)
+        .replace("__MB0__", "%.2f" % _mn("base", "bg"))
+        .replace("__MI0__", "%.2f" % _mn("base", "imp"))
+        .replace("__MP0__", "%.1f" % _mn("base", "pk"))
+        .replace("__MB1__", "%.2f" % _mn("m_a12", "bg"))
+        .replace("__MI1__", "%.2f" % _mn("m_a12", "imp"))
+        .replace("__MP1__", "%.1f" % _mn("m_a12", "pk"))
+        .replace("__MB2__", "%.2f" % _mn("m_a18", "bg"))
+        .replace("__MI2__", "%.2f" % _mn("m_a18", "imp"))
+        .replace("__MP2__", "%.1f" % _mn("m_a18", "pk"))
+        .replace("__MB3__", "%.2f" % _mn("a12_r5", "bg"))
+        .replace("__MI3__", "%.2f" % _mn("a12_r5", "imp"))
+        .replace("__MP3__", "%.1f" % _mn("a12_r5", "pk"))
+        .replace("__MB4__", "%.2f" % _mn("a18_r5", "bg"))
+        .replace("__MI4__", "%.2f" % _mn("a18_r5", "imp"))
+        .replace("__MP4__", "%.1f" % _mn("a18_r5", "pk"))
+        .replace("__MDELTA__", "%.1e" % _mdelta)
+        .replace("__MA12_TOT__", "%+.3f" % m_txt["a12"]["tot_um"] if m_txt.get("a12") else "—")
+        .replace("__MA12_INTEN__", "%+.3f" % m_txt["a12"]["inten"] if m_txt.get("a12") else "—")
+        .replace("__MA12_TAIL__", "%+.3f" % m_txt["a12"]["tail"] if m_txt.get("a12") else "—")
+        .replace("__MA12_PCT__", "%.0f" % (100 * (1 - abs(m_txt["a12"]["tail"]) / abs(m_txt["a12"]["tot_um"]))
+                                            if m_txt.get("a12") and abs(m_txt["a12"]["tot_um"]) > 1e-9 else 0))
+        .replace("__MA12_TPCT__", "%.0f" % (100 * abs(m_txt["a12"]["tail"]) / abs(m_txt["a12"]["tot_um"])
+                                             if m_txt.get("a12") and abs(m_txt["a12"]["tot_um"]) > 1e-9 else 0))
+        .replace("__MA12_LOOMIN__", "%+.3f" % m_txt["a12"]["m_loo"][0] if m_txt.get("a12") else "—")
+        .replace("__MA12_LOOMAX__", "%+.3f" % m_txt["a12"]["m_loo"][1] if m_txt.get("a12") else "—")
+        .replace("__MA18_TOT__", "%+.3f" % m_txt["a18"]["tot_um"] if m_txt.get("a18") else "—")
+        .replace("__MA18_INTEN__", "%+.3f" % m_txt["a18"]["inten"] if m_txt.get("a18") else "—")
+        .replace("__MA18_TAIL__", "%+.3f" % m_txt["a18"]["tail"] if m_txt.get("a18") else "—")
+        .replace("__MA18_LOOMIN__", "%+.3f" % m_txt["a18"]["m_loo"][0] if m_txt.get("a18") else "—")
+        .replace("__MA18_LOOMAX__", "%+.3f" % m_txt["a18"]["m_loo"][1] if m_txt.get("a18") else "—")
+        .replace("__TC_A12__", "%+.3f" % m_txt["tc"]["m_a12"] if m_txt.get("tc") and "m_a12" in m_txt["tc"] else "—")
+        .replace("__TC_BASE__", "%+.3f" % m_txt["tc"]["base"] if m_txt.get("tc") and "base" in m_txt["tc"] else "—")
+        .replace("__TC_A18__", "%+.3f" % m_txt["tc"]["m_a18"] if m_txt.get("tc") and "m_a18" in m_txt["tc"] else "—")
+        .replace("__TC_ARCH_A12__", "%+.2f" % m_txt["tc_arch"]["m_a12"] if m_txt.get("tc_arch") and "m_a12" in m_txt["tc_arch"] else "—")
+        .replace("__TC_ARCH_BASE__", "%+.2f" % m_txt["tc_arch"]["base"] if m_txt.get("tc_arch") and "base" in m_txt["tc_arch"] else "—")
+        .replace("__TC_ARCH_A18__", "%+.2f" % m_txt["tc_arch"]["m_a18"] if m_txt.get("tc_arch") and "m_a18" in m_txt["tc_arch"] else "—")
+        .replace("__FIGQ__", img("figQ_sens_alpha.png",
+                                 "图 Q α 轴（rate=5 固定）：左为干净帧、右为干扰帧的逐帧降噪增益。"
+                                 "灰色点线为右轴上的背景噪声有效功率 SNR —— 它随 α 变化很大，"
+                                 "是 α 扫描中必须剥离的混杂"))
+        .replace("__FIGR__", img("figR_sens_rate.png",
+                                 "图 R rate 轴（α=1.5 固定）：左为干净帧、右为干扰帧。"
+                                 "背景噪声逐位相同，只有突发密度变化 —— 这是干净的单因素操纵"))
+        .replace("__FIGS__", img("figS_sens_pulse.png",
+                                 "图 S 左：脉冲感知分支的净效应 Δ=R5−R4 在 7 个条件上的分布"
+                                 "（误差棒 = 种子间标准差）；右：各条件的背景/干扰有效功率 SNR"))
+        .replace("__FIGT__", img("figT_sens_detect.png",
+                                 "图 T 判别能力（AUC）与性能收益（Δ）的跨条件关系"))
         .replace("__LADDER_NOTE__", ladder_note)
         .replace("__PROTO_IMP__", "%+.2f dB" % _proto_imp)
         .replace("__PROTO_CLEAN__", "%+.2f dB" % _proto_clean)
