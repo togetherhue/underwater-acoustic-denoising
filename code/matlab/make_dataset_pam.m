@@ -1,4 +1,4 @@
-function make_dataset_pam(noise_type, out_root, alpha_val, splits_override)
+function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed_mode)
 %MAKE_DATASET_PAM  按导师方案生成"非高斯脉冲噪声 + 突发干扰"数据集
 %==========================================================================
 %  信号模型（老师文档第一节）：
@@ -24,12 +24,15 @@ function make_dataset_pam(noise_type, out_root, alpha_val, splits_override)
 %
 %  用法：make_dataset_pam('alphastable', 'D:/project/dataset_pam/alphastable', 1.5)
 %        make_dataset_pam('gauss',       'D:/project/dataset_pam/gauss')
+%        % 干扰与 chirp 解耦（用于隔离"波形效应"）：
+%        make_dataset_pam('alphastable','D:/project/ds_scan_paired',1.5, sp, 'paired')
 %==========================================================================
 
 if nargin < 1 || isempty(noise_type); noise_type = 'alphastable'; end
 if nargin < 2 || isempty(out_root);   out_root = fullfile('D:/project/dataset_pam', noise_type); end
 if nargin < 3 || isempty(alpha_val);  alpha_val = 1.5; end
 if nargin < 4; splits_override = []; end
+if nargin < 5 || isempty(seed_mode); seed_mode = 'index'; end
 
 cfg.fs_chirp     = 9600;
 cfg.fs           = 24000;
@@ -43,6 +46,19 @@ cfg.noise_type    = lower(noise_type);
 cfg.alpha         = alpha_val;
 cfg.beta          = 0;                     % 对称 α 稳定分布
 cfg.Q75_GAUSS     = 0.6745;                % q75(|N(0,1)|)
+
+% 噪声/干扰的随机数种子模式：
+%   'index'  （默认）种子 = seed + 样本序号 cnt。由于 chirp 是最外层循环，
+%            每个 chirp 独占一段连续种子区间 -> 【干扰实现与 chirp 序号混杂】，
+%            此时逐 chirp 的差异无法归因于波形。
+%   'paired' 种子只由 (信道, SNR, 重复) 决定，与 chirp 无关；并且把干扰/噪声
+%            生成在【固定长度 N_ref】上再截取到各 chirp 的长度。因为 gen_burst
+%            的突发数量 ~ rate·N/fs、到达时刻 ~ rand()·N/fs 都依赖长度，
+%            只有固定 N_ref 才能让不同时长的 chirp 看到【逐位相同】的干扰。
+%            注意：paired 模式要求 cfg.normalize = true（否则噪声幅度所依赖的
+%            Pc 会随 chirp 变化，配对不成立）。
+cfg.seed_mode     = lower(seed_mode);
+cfg.N_ref         = 36000;                 % > 任意 chirp 的信号长度（最大约 31999）
 
 % 突发干扰参数（老师：随机幅度、发生概率、持续时间、突发间隔）
 cfg.burst = struct('rate', 5, 'dur_range', [0.002, 0.030], ...
@@ -134,21 +150,34 @@ for si = 1:numel(splits)
                 for rep = 1:sp.n_noise
                     cnt = cnt + 1;
 
-                    % ---- 背景噪声（按样本序号定种子，保证两套数据配对）----
-                    rng(cfg.seed + cnt, 'twister');
-                    if strcmp(cfg.noise_type, 'gauss')
-                        v = randn(1, N) * sqrt(Pn);
+                    % ---- 噪声/干扰的随机种子与生成长度 ----
+                    if strcmp(cfg.seed_mode, 'paired')
+                        % 与 chirp 无关：同一 (hi, snr, rep) 下所有 chirp 共享
+                        % 完全相同的干扰实现，从而把波形效应单独隔离出来
+                        key = (hi - 1) * 100000 + (round(snr) + 200) * 1000 + rep;
+                        Ng  = cfg.N_ref;      % 固定长度 -> 突发数量/时刻与 chirp 无关
                     else
-                        x0 = stblrnd(cfg.alpha, cfg.beta, 1, 0, 1, N);   % 必须 1×N，与 clean_signal 同向，否则广播成 N×N
-                        q0 = local_q75(abs(x0));
-                        gam = sqrt(Pn) * cfg.Q75_GAUSS / max(q0, 1e-12);
-                        v = gam * x0;
+                        key = cnt;
+                        Ng  = N;
                     end
 
-                    % ---- 突发干扰（同样按样本序号定种子 -> 两套数据完全一致）----
-                    bc = cfg.burst;  bc.seed = cfg.seed + 500000 + cnt;
-                    [imp, mask] = gen_burst(N, cfg.fs, bc);
-                    imp = imp * rms_c;            % 幅度以干净信号 rms 为单位
+                    % ---- 背景噪声 ----
+                    rng(cfg.seed + key, 'twister');
+                    if strcmp(cfg.noise_type, 'gauss')
+                        v_full = randn(1, Ng) * sqrt(Pn);
+                    else
+                        x0 = stblrnd(cfg.alpha, cfg.beta, 1, 0, 1, Ng);   % 必须 1×Ng，与 clean_signal 同向
+                        q0 = local_q75(abs(x0));
+                        gam = sqrt(Pn) * cfg.Q75_GAUSS / max(q0, 1e-12);
+                        v_full = gam * x0;
+                    end
+                    v = v_full(1:N);
+
+                    % ---- 突发干扰（同一 key + 同一 Ng -> 两套数据完全一致）----
+                    bc = cfg.burst;  bc.seed = cfg.seed + 500000 + key;
+                    [imp_full, mask_full] = gen_burst(Ng, cfg.fs, bc);
+                    imp  = imp_full(1:N) * rms_c;   % 幅度以干净信号 rms 为单位
+                    mask = mask_full(1:N);
 
                     noisy_signal = clean_signal + v + imp;
                     imp_mask = uint8(mask(:).');

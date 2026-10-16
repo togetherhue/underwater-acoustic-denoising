@@ -1,0 +1,3 @@
+tag,testset,n,params,c,norm,use_short,use_long,use_gate,use_pulse,freq_refine,pulse_freq,loss,delta,lam_imp,lam_spec,select,epochs,seed,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+fo_bn_l1,testA,1080,5910,24,bn,0,0,1,0,2.0,0,l1,0.2,1.0,0.5,val_loss,15,20261013,-7.9633,12.4716,-8.0076,12.1336,-4.6104,7.2099,15.0519,14.1344,25.0532,13.5379,0.1935,0.1560
+fo_bn_l1,testC,240,5910,24,bn,0,0,1,0,2.0,0,l1,0.2,1.0,0.5,val_loss,15,20261013,-8.2654,10.0637,-8.3100,9.5245,-4.9114,4.6869,12.3183,11.1637,22.6317,10.8158,0.1937,0.1551

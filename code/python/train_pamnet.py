@@ -62,6 +62,9 @@ def main():
                     help="把脉冲置信度 p_n 作为附加通道【喂进频域掩码分支】"
                          "（需要同时开启 --pulse 与 --freq-refine）")
     ap.add_argument("--loss", default="huber", choices=["huber", "l1"])
+    ap.add_argument("--select", default="fg", choices=["fg", "val_loss"],
+                    help="模型选择准则。fg=验证集逐帧降噪增益中位（默认，与评估口径一致）；"
+                         "val_loss=最小化验证损失（阶段0 的旧做法，用于受控对比时复现其协议）")
     ap.add_argument("--delta", type=float, default=0.2, help="Huber 的 δ")
     ap.add_argument("--lam-imp", type=float, default=1.0, dest="lam_imp")
     ap.add_argument("--lam-spec", type=float, default=0.05, dest="lam_spec",
@@ -95,7 +98,11 @@ def main():
     print("组件        : 短时=%d 长时=%d 门控=%d 脉冲感知=%d  频域精修=%s  p注入频域=%d"
           % (A.short, A.long, A.gate, A.pulse,
              A.freq_refine if A.freq_refine > 0 else "关", A.pulse_freq))
+    print("架构        : %s" % ("纯频域掩码（无时域分支，用于与阶段0 受控对比）"
+                                if not (A.short or A.long) else "PAM-Net 时域+可选频域精修"))
     print("归一化      : %s" % A.norm)
+    print("模型选择    : %s" % ("验证帧增益中位（fg）" if A.select == "fg"
+                                else "验证损失最小（val_loss，阶段0 旧做法）"))
     print("损失        : %s  δ=%.3f  λ_imp=%.2f  λ_spec=%.2f  seed=%d"
           % (A.loss, A.delta, A.lam_imp, A.lam_spec, SEED))
 
@@ -116,6 +123,7 @@ def main():
 
     opt = torch.optim.Adam(model.parameters(), lr=A.lr, weight_decay=V3.CFG["weight_decay"])
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=A.epochs)
+    score_of = ((lambda vl, fg: fg) if A.select == "fg" else (lambda vl, fg: -vl))
     best_score, best_path = -float("inf"), os.path.join(A.outdir, "model_%s.pth" % A.tag)
 
     logf = open(os.path.join(A.outdir, "train_log_%s.txt" % A.tag), "w", encoding="utf-8")
@@ -204,11 +212,13 @@ def main():
                    % (ep, trl, vl, acc["huber"], acc["imp"], acc["spec"],
                       vsi, vso, p_imp, p_clean, fg_med, fg_clean, fg_imp, fg_impmin, lr))
         logf.flush()
-        if fg_med > best_score:
-            best_score = fg_med
+        sc = score_of(vl, fg_med)
+        if sc > best_score:
+            best_score = sc
             torch.save(model.state_dict(), best_path)
     logf.close()
-    print("最佳验证帧增益中位 %.4f dB -> %s" % (best_score, best_path))
+    print("最佳验证%s %.4f -> %s"
+          % ("帧增益中位(dB)" if A.select == "fg" else "损失(取负)", best_score, best_path))
 
     # ---------------- 评估（口径与阶段0 完全一致）----------------
     model.load_state_dict(torch.load(best_path, map_location=V3.DEVICE))
@@ -243,11 +253,12 @@ def main():
         w = csv.writer(f)
         w.writerow(["tag", "testset", "n", "params", "c", "norm", "use_short", "use_long",
                     "use_gate", "use_pulse", "freq_refine", "pulse_freq", "loss", "delta",
-                    "lam_imp", "lam_spec", "epochs", "seed"] + COLS)
+                    "lam_imp", "lam_spec", "select", "epochs", "seed"] + COLS)
         for row in summary:
             w.writerow([A.tag, row[0], row[1], model.n_params(), A.c, A.norm, A.short, A.long,
                         A.gate, A.pulse, A.freq_refine, A.pulse_freq, A.loss, A.delta,
-                        A.lam_imp, A.lam_spec, A.epochs, SEED] + ["%.4f" % v for v in row[2:]])
+                        A.lam_imp, A.lam_spec, A.select, A.epochs, SEED]
+                       + ["%.4f" % v for v in row[2:]])
     print("结果 -> %s/summary_%s.csv" % (A.outdir, A.tag))
 
 

@@ -249,31 +249,43 @@ class PAMNet(nn.Module):
                  use_pulse=True, freq_refine=0.0, n_fft=512, hop=128,
                  pulse_freq=False, norm="bn"):
         super().__init__()
-        assert use_short or use_long, "至少要启用一条多尺度分支"
-        assert not pulse_freq or (use_pulse and freq_refine > 0), \
-            "pulse_freq 需要同时启用脉冲感知分支与频域精修"
         self.c = c
         self.norm_kind = norm
         self.use_short, self.use_long = use_short, use_long
         self.use_gate, self.use_pulse = use_gate, use_pulse
         self.pulse_freq = pulse_freq
+        # 时域通路是否启用。两者都不启用时退化为【纯频域掩码模型】：
+        # 参数量与阶段0 的 v3 FrequencyBranch（fch=2.0，5,910 参数）一致，
+        # 用于把"架构贡献"与"训练协议贡献"分离开做受控对比。
+        self.use_time = bool(use_short or use_long)
 
-        self.feat = FeatureExtractor(c, norm=norm)
-        if use_short:
-            self.short = ShortBranch(c, norm=norm)
-        if use_long:
-            self.long = LongBranch(c, norm=norm)
-        if use_short and use_long and use_gate:
-            self.gate = GatedFusion(c)
-        if use_pulse:
-            self.pulse = PulseBranch(c, norm=norm)
-        # 脉冲感知"辅助特征融合"的具体形式：
-        #   把 p_n 作为附加通道拼到融合特征后，送入残差估计头。
-        # 选用拼接而非乘性调制 (1+p)·F，原因是后者会把 L_imp 的梯度直接
-        # 灌进共享主干特征，导致"为了拟合掩码而破坏重建"（首轮实验已观察到
-        # 该现象：p 分离度变好的同时验证 SNR 反而下降）。拼接让残差头自行
-        # 决定如何使用 p，credit assignment 更干净。
-        self.resid = ResidualHead(c, cin=c + (1 if use_pulse else 0), norm=norm)
+        if not self.use_time:
+            assert freq_refine and freq_refine > 0, \
+                "必须启用至少一条多尺度分支（--short/--long），" \
+                "或启用频域精修（--freq-refine > 0）"
+            assert not use_pulse, "纯频域模式（无时域分支）不能启用脉冲感知分支"
+            assert not pulse_freq, "纯频域模式没有 p_n，不能启用 p 注入"
+            self.feat = self.short = self.long = None
+            self.gate = self.pulse = self.resid = None
+        else:
+            assert not pulse_freq or (use_pulse and freq_refine > 0), \
+                "pulse_freq 需要同时启用脉冲感知分支与频域精修"
+            self.feat = FeatureExtractor(c, norm=norm)
+            if use_short:
+                self.short = ShortBranch(c, norm=norm)
+            if use_long:
+                self.long = LongBranch(c, norm=norm)
+            if use_short and use_long and use_gate:
+                self.gate = GatedFusion(c)
+            if use_pulse:
+                self.pulse = PulseBranch(c, norm=norm)
+            # 脉冲感知"辅助特征融合"的具体形式：
+            #   把 p_n 作为附加通道拼到融合特征后，送入残差估计头。
+            # 选用拼接而非乘性调制 (1+p)·F，原因是后者会把 L_imp 的梯度直接
+            # 灌进共享主干特征，导致"为了拟合掩码而破坏重建"（首轮实验已观察到
+            # 该现象：p 分离度变好的同时验证 SNR 反而下降）。拼接让残差头自行
+            # 决定如何使用 p，credit assignment 更干净。
+            self.resid = ResidualHead(c, cin=c + (1 if use_pulse else 0), norm=norm)
         if freq_refine and freq_refine > 0:
             self.freq = FreqRefine(n_fft, hop, w=freq_refine, pulse_in=pulse_freq,
                                    norm=norm)
@@ -282,6 +294,11 @@ class PAMNet(nn.Module):
 
     # ------------------------------------------------------------------
     def forward(self, x, return_p=False):
+        if not self.use_time:
+            # 纯频域掩码模型：s_hat = ISTFT(mask ⊙ |X| ⊙ exp(j(φ + 0.1·Δφ)))
+            s_hat = self.freq(x, None)
+            return (s_hat, None) if return_p else s_hat
+
         f0 = self.feat(x)
 
         if self.use_short and self.use_long:

@@ -1,0 +1,488 @@
+{
+ "testA": {
+  "rows": [
+   {
+    "rung": "R0",
+    "name": "阶段0 纯频域\nBN + L1+0.5谱\n按 val_loss 选",
+    "note": "train_pam.py，v3.DenoiseNet(fch=2.0)，5,910 参数",
+    "n_seed": 1,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "l1",
+    "select": "val_loss",
+    "frmgain_clean": 14.1346,
+    "frmgain_clean_sd": 0.0,
+    "frmgain_clean_vals": [
+     14.1346
+    ],
+    "frmgain_imp": 25.0912,
+    "frmgain_imp_sd": 0.0,
+    "frmgain_imp_vals": [
+     25.0912
+    ],
+    "frmgain_imp_min": 13.5367,
+    "frmgain_imp_min_sd": 0.0,
+    "frmgain_imp_min_vals": [
+     13.5367
+    ]
+   },
+   {
+    "rung": "R1",
+    "name": "纯频域\n同协议走 PAM 管线",
+    "note": "协议与 R0 相同，换训练管线 —— 检验两管线是否等价",
+    "n_seed": 1,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "l1",
+    "select": "val_loss",
+    "frmgain_clean": 14.1344,
+    "frmgain_clean_sd": 0.0,
+    "frmgain_clean_vals": [
+     14.1344
+    ],
+    "frmgain_imp": 25.0532,
+    "frmgain_imp_sd": 0.0,
+    "frmgain_imp_vals": [
+     25.0532
+    ],
+    "frmgain_imp_min": 13.5379,
+    "frmgain_imp_min_sd": 0.0,
+    "frmgain_imp_min_vals": [
+     13.5379
+    ]
+   },
+   {
+    "rung": "R2",
+    "name": "+ 新损失/选择准则",
+    "note": "Huber(δ=0.2)+0.05·谱L1，按验证帧增益中位选模型",
+    "n_seed": 3,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "huber",
+    "select": "fg",
+    "frmgain_clean": 13.7918,
+    "frmgain_clean_sd": 0.1803457512668372,
+    "frmgain_clean_vals": [
+     13.9896,
+     13.6365,
+     13.7493
+    ],
+    "frmgain_imp": 24.6761,
+    "frmgain_imp_sd": 0.22378474031979875,
+    "frmgain_imp_vals": [
+     24.804,
+     24.4177,
+     24.8066
+    ],
+    "frmgain_imp_min": 13.320633333333333,
+    "frmgain_imp_min_sd": 0.1757946055296723,
+    "frmgain_imp_min_vals": [
+     13.5209,
+     13.1918,
+     13.2492
+    ]
+   },
+   {
+    "rung": "R3",
+    "name": "+ 归一化 GN",
+    "note": "GroupNorm 替代 BatchNorm",
+    "n_seed": 5,
+    "params": 5910,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "fg",
+    "frmgain_clean": 14.964120000000003,
+    "frmgain_clean_sd": 0.09942342279362588,
+    "frmgain_clean_vals": [
+     14.9978,
+     15.0829,
+     14.9682,
+     14.8083,
+     14.9634
+    ],
+    "frmgain_imp": 24.309540000000005,
+    "frmgain_imp_sd": 0.32677582988954373,
+    "frmgain_imp_vals": [
+     24.5526,
+     24.5771,
+     24.4329,
+     23.7922,
+     24.1929
+    ],
+    "frmgain_imp_min": 14.02022,
+    "frmgain_imp_min_sd": 0.20699830192540183,
+    "frmgain_imp_min_vals": [
+     14.1366,
+     14.1489,
+     14.1075,
+     13.656,
+     14.0521
+    ]
+   },
+   {
+    "rung": "R4",
+    "name": "+ 时域残差通路",
+    "note": "PAM-Net 时域多尺度分支（短时/长时/门控）+ 频域精修，无脉冲分支",
+    "n_seed": 5,
+    "params": 14367,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "val_loss",
+    "frmgain_clean": 18.13914,
+    "frmgain_clean_sd": 0.21659365872527292,
+    "frmgain_clean_vals": [
+     18.146,
+     18.4671,
+     18.1927,
+     17.9153,
+     17.9746
+    ],
+    "frmgain_imp": 26.5876,
+    "frmgain_imp_sd": 0.2606559322171656,
+    "frmgain_imp_vals": [
+     26.2012,
+     26.8817,
+     26.7658,
+     26.5608,
+     26.5285
+    ],
+    "frmgain_imp_min": 17.100280000000005,
+    "frmgain_imp_min_sd": 0.22544101667620275,
+    "frmgain_imp_min_vals": [
+     16.8278,
+     17.4514,
+     17.1084,
+     17.0258,
+     17.088
+    ]
+   },
+   {
+    "rung": "R5",
+    "name": "+ 脉冲感知分支",
+    "note": "p_n 作为附加通道注入频域掩码 —— 导师方案的创新点",
+    "n_seed": 5,
+    "params": 14858,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "val_loss",
+    "frmgain_clean": 18.26598,
+    "frmgain_clean_sd": 0.28713945566570986,
+    "frmgain_clean_vals": [
+     18.4991,
+     18.4449,
+     18.4336,
+     17.8223,
+     18.13
+    ],
+    "frmgain_imp": 27.377339999999997,
+    "frmgain_imp_sd": 0.15768261793869345,
+    "frmgain_imp_vals": [
+     27.466,
+     27.337,
+     27.5157,
+     27.1206,
+     27.4474
+    ],
+    "frmgain_imp_min": 17.12496,
+    "frmgain_imp_min_sd": 0.18857585476407077,
+    "frmgain_imp_min_vals": [
+     17.1974,
+     17.042,
+     17.3341,
+     16.8431,
+     17.2082
+    ]
+   }
+  ],
+  "steps": [
+   {
+    "label": "R0→R1  纯频域 同协议走 PAM 管线",
+    "frmgain_clean": -0.00020000000000131024,
+    "frmgain_clean_se": 0.0,
+    "frmgain_imp": -0.038000000000000256,
+    "frmgain_imp_se": 0.0,
+    "frmgain_imp_min": 0.001200000000000756,
+    "frmgain_imp_min_se": 0.0
+   },
+   {
+    "label": "R1→R2  + 新损失/选择准则",
+    "frmgain_clean": -0.3425999999999991,
+    "frmgain_clean_se": 0.10412266804111374,
+    "frmgain_imp": -0.37709999999999866,
+    "frmgain_imp_se": 0.1292021800641663,
+    "frmgain_imp_min": -0.21726666666666716,
+    "frmgain_imp_min_se": 0.10149506282464038
+   },
+   {
+    "label": "R2→R3  + 归一化 GN",
+    "frmgain_clean": 1.1723200000000027,
+    "frmgain_clean_se": 0.11321896219273513,
+    "frmgain_imp": -0.3665599999999962,
+    "frmgain_imp_se": 0.19506330237472463,
+    "frmgain_imp_min": 0.6995866666666668,
+    "frmgain_imp_min_se": 0.13737142052762524
+   },
+   {
+    "label": "R3→R4  + 时域残差通路",
+    "frmgain_clean": 3.175019999999998,
+    "frmgain_clean_se": 0.10658126477012747,
+    "frmgain_imp": 2.278059999999993,
+    "frmgain_imp_se": 0.1869352604513122,
+    "frmgain_imp_min": 3.080060000000005,
+    "frmgain_imp_min_se": 0.13687362711640233
+   },
+   {
+    "label": "R4→R5  + 脉冲感知分支",
+    "frmgain_clean": 0.12683999999999784,
+    "frmgain_clean_se": 0.1608489229059369,
+    "frmgain_imp": 0.7897399999999983,
+    "frmgain_imp_se": 0.13623899808791873,
+    "frmgain_imp_min": 0.024679999999996483,
+    "frmgain_imp_min_se": 0.13144162582682842
+   }
+  ]
+ },
+ "testC": {
+  "rows": [
+   {
+    "rung": "R0",
+    "name": "阶段0 纯频域\nBN + L1+0.5谱\n按 val_loss 选",
+    "note": "train_pam.py，v3.DenoiseNet(fch=2.0)，5,910 参数",
+    "n_seed": 1,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "l1",
+    "select": "val_loss",
+    "frmgain_clean": 11.2452,
+    "frmgain_clean_sd": 0.0,
+    "frmgain_clean_vals": [
+     11.2452
+    ],
+    "frmgain_imp": 22.688,
+    "frmgain_imp_sd": 0.0,
+    "frmgain_imp_vals": [
+     22.688
+    ],
+    "frmgain_imp_min": 10.8016,
+    "frmgain_imp_min_sd": 0.0,
+    "frmgain_imp_min_vals": [
+     10.8016
+    ]
+   },
+   {
+    "rung": "R1",
+    "name": "纯频域\n同协议走 PAM 管线",
+    "note": "协议与 R0 相同，换训练管线 —— 检验两管线是否等价",
+    "n_seed": 1,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "l1",
+    "select": "val_loss",
+    "frmgain_clean": 11.1637,
+    "frmgain_clean_sd": 0.0,
+    "frmgain_clean_vals": [
+     11.1637
+    ],
+    "frmgain_imp": 22.6317,
+    "frmgain_imp_sd": 0.0,
+    "frmgain_imp_vals": [
+     22.6317
+    ],
+    "frmgain_imp_min": 10.8158,
+    "frmgain_imp_min_sd": 0.0,
+    "frmgain_imp_min_vals": [
+     10.8158
+    ]
+   },
+   {
+    "rung": "R2",
+    "name": "+ 新损失/选择准则",
+    "note": "Huber(δ=0.2)+0.05·谱L1，按验证帧增益中位选模型",
+    "n_seed": 3,
+    "params": 5910,
+    "norm": "bn",
+    "loss": "huber",
+    "select": "fg",
+    "frmgain_clean": 11.043133333333332,
+    "frmgain_clean_sd": 0.18288109069374428,
+    "frmgain_clean_vals": [
+     11.2062,
+     11.0778,
+     10.8454
+    ],
+    "frmgain_imp": 22.304266666666667,
+    "frmgain_imp_sd": 0.13420917753020223,
+    "frmgain_imp_vals": [
+     22.3828,
+     22.1493,
+     22.3807
+    ],
+    "frmgain_imp_min": 10.714633333333333,
+    "frmgain_imp_min_sd": 0.1696502971802098,
+    "frmgain_imp_min_vals": [
+     10.8361,
+     10.5208,
+     10.787
+    ]
+   },
+   {
+    "rung": "R3",
+    "name": "+ 归一化 GN",
+    "note": "GroupNorm 替代 BatchNorm",
+    "n_seed": 5,
+    "params": 5910,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "fg",
+    "frmgain_clean": 13.53182,
+    "frmgain_clean_sd": 0.2043876512903852,
+    "frmgain_clean_vals": [
+     13.6054,
+     13.5908,
+     13.542,
+     13.1885,
+     13.7324
+    ],
+    "frmgain_imp": 22.78432,
+    "frmgain_imp_sd": 0.28538891358985796,
+    "frmgain_imp_vals": [
+     22.9411,
+     23.0094,
+     22.9167,
+     22.3027,
+     22.7517
+    ],
+    "frmgain_imp_min": 12.206520000000001,
+    "frmgain_imp_min_sd": 0.2466497050474618,
+    "frmgain_imp_min_vals": [
+     12.3161,
+     12.4294,
+     12.2071,
+     11.7888,
+     12.2912
+    ]
+   },
+   {
+    "rung": "R4",
+    "name": "+ 时域残差通路",
+    "note": "PAM-Net 时域多尺度分支（短时/长时/门控）+ 频域精修，无脉冲分支",
+    "n_seed": 5,
+    "params": 14367,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "val_loss",
+    "frmgain_clean": 16.90144,
+    "frmgain_clean_sd": 0.21146811343557234,
+    "frmgain_clean_vals": [
+     17.0091,
+     17.1914,
+     16.911,
+     16.6874,
+     16.7083
+    ],
+    "frmgain_imp": 25.416639999999997,
+    "frmgain_imp_sd": 0.2999911882039206,
+    "frmgain_imp_vals": [
+     25.0564,
+     25.878,
+     25.4665,
+     25.2995,
+     25.3828
+    ],
+    "frmgain_imp_min": 15.42858,
+    "frmgain_imp_min_sd": 0.34098239983905365,
+    "frmgain_imp_min_vals": [
+     15.1237,
+     15.9899,
+     15.2394,
+     15.2975,
+     15.4924
+    ]
+   },
+   {
+    "rung": "R5",
+    "name": "+ 脉冲感知分支",
+    "note": "p_n 作为附加通道注入频域掩码 —— 导师方案的创新点",
+    "n_seed": 5,
+    "params": 14858,
+    "norm": "gn",
+    "loss": "huber",
+    "select": "val_loss",
+    "frmgain_clean": 17.16102,
+    "frmgain_clean_sd": 0.28977470041395903,
+    "frmgain_clean_vals": [
+     17.4458,
+     17.3099,
+     17.26,
+     16.6935,
+     17.0959
+    ],
+    "frmgain_imp": 25.741540000000004,
+    "frmgain_imp_sd": 0.2502722977079158,
+    "frmgain_imp_vals": [
+     25.9974,
+     25.6825,
+     25.7395,
+     25.359,
+     25.9293
+    ],
+    "frmgain_imp_min": 15.230900000000002,
+    "frmgain_imp_min_sd": 0.14838473641180194,
+    "frmgain_imp_min_vals": [
+     15.3068,
+     15.1584,
+     15.3288,
+     15.0037,
+     15.3568
+    ]
+   }
+  ],
+  "steps": [
+   {
+    "label": "R0→R1  纯频域 同协议走 PAM 管线",
+    "frmgain_clean": -0.08150000000000013,
+    "frmgain_clean_se": 0.0,
+    "frmgain_imp": -0.05630000000000024,
+    "frmgain_imp_se": 0.0,
+    "frmgain_imp_min": 0.01419999999999888,
+    "frmgain_imp_min_se": 0.0
+   },
+   {
+    "label": "R1→R2  + 新损失/选择准则",
+    "frmgain_clean": -0.12056666666666871,
+    "frmgain_clean_se": 0.10558644694172563,
+    "frmgain_imp": -0.3274333333333317,
+    "frmgain_imp_se": 0.07748570477478053,
+    "frmgain_imp_min": -0.10116666666666596,
+    "frmgain_imp_min_se": 0.09794764474509414
+   },
+   {
+    "label": "R2→R3  + 归一化 GN",
+    "frmgain_clean": 2.488686666666668,
+    "frmgain_clean_se": 0.1396544312858631,
+    "frmgain_imp": 0.4800533333333341,
+    "frmgain_imp_se": 0.14930974798868402,
+    "frmgain_imp_min": 1.4918866666666677,
+    "frmgain_imp_min_se": 0.14751595341220267
+   },
+   {
+    "label": "R3→R4  + 时域残差通路",
+    "frmgain_clean": 3.369620000000001,
+    "frmgain_clean_se": 0.1315241992942745,
+    "frmgain_imp": 2.6323199999999964,
+    "frmgain_imp_se": 0.18517102635131638,
+    "frmgain_imp_min": 3.222059999999999,
+    "frmgain_imp_min_se": 0.18820471513753323
+   },
+   {
+    "label": "R4→R5  + 脉冲感知分支",
+    "frmgain_clean": 0.2595799999999997,
+    "frmgain_clean_se": 0.1604295110009376,
+    "frmgain_imp": 0.32490000000000663,
+    "frmgain_imp_se": 0.17471744961508553,
+    "frmgain_imp_min": -0.1976799999999983,
+    "frmgain_imp_min_se": 0.1663051574666283
+   }
+  ]
+ }
+}

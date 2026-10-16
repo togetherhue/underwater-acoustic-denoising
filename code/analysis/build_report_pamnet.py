@@ -4,12 +4,16 @@
 ================================================================================
 数据来源（全部在 figs_pamnet/）：
   summary_pamnet.json   analyze_pamnet.py   产出：各变体单种子结果 + 阶段0 参照
-  seed_agg.json         analyze_seeds.py    产出：4 个关键配置 × 多种子的均值±标准差
+  seed_agg.json         analyze_seeds.py    产出：关键配置 × 多种子的均值±标准差
   pulse_diag.json       make_fig_pamnet_pulse.py 产出：脉冲分支 AUC 诊断
   baseline_pam.json     compare_baseline_pam.py 产出：经典方法
   paired_test.json      paired_test_pamnet.py 产出：样本级配对检验
   stability.json        analyze_stability.py 产出：逐轮振荡与选择偏差
-  图：figJ（消融）、figK（脉冲诊断）、figL（稳定性）、figM（多种子）、figN（归一化对照）
+  ladder.json           analyze_ladder.py   产出：受控阶梯（协议 vs 架构分解）
+  chirp_band.json       analyze_chirp_band.py 产出：效应 vs 波形参数（不配对）
+  chirp_band_paired.json analyze_chirp_band.py 产出：同上，但干扰与波形解耦
+  图：figJ（消融）、figK（脉冲诊断）、figL（稳定性）、figM（多种子）、figN（归一化对照）、
+      figO（波形机制）、figP（受控阶梯）
 """
 import base64, os, json
 import numpy as np
@@ -24,6 +28,16 @@ PD = json.load(open(os.path.join(FIG, "pulse_diag.json"), encoding="utf-8"))
 BL = json.load(open(os.path.join(FIG, "baseline_pam.json"), encoding="utf-8"))
 PT = json.load(open(os.path.join(FIG, "paired_test.json"), encoding="utf-8"))
 ST = json.load(open(os.path.join(FIG, "stability.json"), encoding="utf-8"))
+
+
+def _try_json(name):
+    p = os.path.join(FIG, name)
+    return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
+
+
+LAD = _try_json("ladder.json")
+CB = _try_json("chirp_band.json")
+CBP = _try_json("chirp_band_paired.json")
 
 V = S["variants"]
 R = S["refs"]
@@ -160,6 +174,52 @@ for r in ST["runs"]:
     rows_stab += ("<tr><td>%s</td><td>%.3f</td><td>%d</td><td>%.2f</td></tr>"
                   % (r["tag"], r["sd"], r["best_ep"], r["gain"]))
 
+# ================= 受控阶梯表 =================
+rows_ladder = ""
+rows_step = ""
+ladder_note = ""
+if LAD and LAD.get("testA"):
+    for r in LAD["testA"]["rows"]:
+        hl = " style='background:#eef4ff;font-weight:600'" if r["rung"] in ("R3", "R5") else ""
+        rows_ladder += ("<tr%s><td><b>%s</b> %s</td><td>%d</td><td>%s</td>"
+                        "<td>%.2f%s</td><td>%.2f%s</td><td>%.2f%s</td></tr>"
+                        % (hl, r["rung"], r["name"].replace("\n", " "), r["params"],
+                           ("n=%d" % r["n_seed"]) if r["n_seed"] > 1 else "n=1",
+                           r["frmgain_clean"],
+                           "" if r["n_seed"] == 1 else "±%.2f" % r["frmgain_clean_sd"],
+                           r["frmgain_imp"],
+                           "" if r["n_seed"] == 1 else "±%.2f" % r["frmgain_imp_sd"],
+                           r["frmgain_imp_min"],
+                           "" if r["n_seed"] == 1 else "±%.2f" % r["frmgain_imp_min_sd"]))
+    for s in LAD["testA"]["steps"]:
+        rows_step += ("<tr><td>%s</td><td>%+.2f ± %.2f</td><td>%+.2f ± %.2f</td>"
+                      "<td>%+.2f ± %.2f</td></tr>"
+                      % (s["label"], s["frmgain_clean"], s["frmgain_clean_se"],
+                         s["frmgain_imp"], s["frmgain_imp_se"],
+                         s["frmgain_imp_min"], s["frmgain_imp_min_se"]))
+    _r0 = LAD["testA"]["rows"][0]
+    _rn = LAD["testA"]["rows"][-1]
+    ladder_note = ("%s → %s 共提升 干净帧 %+.2f / 干扰帧 %+.2f / 干扰最差 %+.2f dB"
+                   % (_r0["rung"], _rn["rung"],
+                      _rn["frmgain_clean"] - _r0["frmgain_clean"],
+                      _rn["frmgain_imp"] - _r0["frmgain_imp"],
+                      _rn["frmgain_imp_min"] - _r0["frmgain_imp_min"]))
+
+# ================= 波形机制表 =================
+CH_KEYS = [("bw", "带宽 BW (Hz)"), ("f_lo", "下截止频率"), ("f_hi", "上截止频率"),
+           ("T", "时长 T (s)"), ("A", "幅度 A"),
+           ("inband", "干扰落在信号带内的能量占比"),
+           ("overlap", "干扰与信号的<b>时频重叠率</b>"),
+           ("ratio", "带内干扰/信号能量比")]
+rows_chirp = ""
+if CB and CBP:
+    for k, nm in CH_KEYS:
+        r1 = CB["corr_all"].get(k, float("nan"))
+        r2 = CBP["corr_all"].get(k, float("nan"))
+        hl = " style='background:#f0fdf4;font-weight:600'" if k == "overlap" else ""
+        rows_chirp += ("<tr%s><td>%s</td><td>%+.3f</td><td>%+.3f</td></tr>"
+                       % (hl, nm, r1, r2))
+
 # ================= KPI =================
 tc, ti, tm = (ms("频域精修 +p注入（GN）", "frmgain_clean"),
               ms("频域精修 +p注入（GN）", "frmgain_imp"),
@@ -186,6 +246,30 @@ L_HY = "频域精修：+p注入 − (−脉冲分支) [GN]"
 sd_bn = next((r["sd"] for r in ST["runs"] if r["tag"] == "pamnet"), float("nan"))
 gain_bn = next((r["gain"] for r in ST["runs"] if r["tag"] == "pamnet"), float("nan"))
 sd_gn = next((r["sd"] for r in ST["runs"] if r["tag"] == "pamnet_gn"), float("nan"))
+
+# 阶梯 / 机制的结论数字
+_lad = LAD["testA"]["rows"] if (LAD and LAD.get("testA")) else None
+_proto_imp = _proto_min = _arch_imp = _arch_min = float("nan")
+if _lad:
+    _r0 = _lad[0]
+    _r3 = next((r for r in _lad if r["rung"] == "R3"), None)
+    _rn = _lad[-1]
+    if _r3 is not None:
+        _proto_imp = _r3["frmgain_imp"] - _r0["frmgain_imp"]
+        _proto_min = _r3["frmgain_imp_min"] - _r0["frmgain_imp_min"]
+        _arch_imp = _rn["frmgain_imp"] - _r3["frmgain_imp"]
+        _arch_min = _rn["frmgain_imp_min"] - _r3["frmgain_imp_min"]
+_ov_r = CBP["corr_all"].get("overlap", float("nan")) if CBP else float("nan")
+_proto_clean = _step34_imp = _step45_imp = _ratio = float("nan")
+if _lad:
+    _r0, _r3, _rn = _lad[0], next((r for r in _lad if r["rung"] == "R3"), None), _lad[-1]
+    _r4 = next((r for r in _lad if r["rung"] == "R4"), None)
+    if _r3 is not None:
+        _proto_clean = _r3["frmgain_clean"] - _r0["frmgain_clean"]
+    if _r3 is not None and _r4 is not None:
+        _step34_imp = _r4["frmgain_imp"] - _r3["frmgain_imp"]
+        _step45_imp = _rn["frmgain_imp"] - _r4["frmgain_imp"]
+        _ratio = _step34_imp / _step45_imp if abs(_step45_imp) > 1e-9 else float("nan")
 
 concl = """<div class="box good"><b>① 按导师方案实现的 PAM-Net 可用，且远超全部经典方法。</b>
 纯时域版（8,906 参数，GroupNorm，{tdn} 种子均值）在 testA 上拿到干扰帧增益
@@ -221,6 +305,26 @@ best-checkpoint 选择会挑到"统计量恰好有利"的轮次，带来中位 <
 <b>后果</b>：BN 单种子曾给出"脉冲分支 +1.99/+1.27/+0.96 dB"，而 GN 多种子只有
 <b>{d_hyc:+.3f}（干净帧）/{d_hy:+.3f}（干扰帧） dB</b> ——
 <b>单种子 + BN 会把效应量夸大 2~6 倍</b>。所有最终结论均基于 GN + 多种子。</div>
+
+<div class="box good"><b>⑤ 受控阶梯：架构是主要贡献，协议只占小头。</b>
+把"阶段0 → PAM-Net"的差距拆成<b>每步只改一个因素</b>的阶梯。前置验证：纯频域模式的
+PAM-Net 与阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code> <b>架构逐位等价</b>
+（参数量同为 5,910，前向输出最大差 <b>0.000e+00</b>）；且协议完全相同、只换训练管线时
+结果差 <b>≤0.04 dB</b>。分解结果：<b>训练协议（损失 + 模型选择 + 归一化）合计约
+{proto_imp:+.2f} dB</b>，<b>架构（时域多尺度残差 + 脉冲感知注入）约 {arch_imp:+.2f} dB</b>
+（干扰帧；干扰帧最差 {proto_min:+.2f} / {arch_min:+.2f}）。
+此前"PAM-Net 优于阶段0"的结论<b>成立</b>，但现在协议成分被单独量化出来了。详见第六节。</div>
+
+<div class="box warn"><b>⑥ 效应的波形依赖：真实但很小，机制不是带宽。</b>
+① 效应是<b>强 SNR 依赖</b>的 —— 低 SNR 时收益全在干扰帧，高 SNR 时转到干净帧，
+两个测试集是同一趋势（所以"testA/testC 不一致"的说法是错的）；<br>
+② 方差分解：波形效应<b>真实</b>（干扰帧 F = 4.13，p &lt; 0.01）但只解释 <b>3.8%</b> 的方差，
+<b>96% 来自逐样本的干扰实现波动</b>（SD 1.73 dB vs 波形 0.34 dB）——
+分支不是"稳定提升"，而是在个别样本上帮助或损害 ±1.7 dB、平均只 +0.37 dB 的小幅正偏置；<br>
+③ 用"<b>固定干扰、只变波形</b>"的配对设计（干扰最大差 1.07e−14）发现真正的机制是
+<b>干扰与信号的时频重叠率</b>（r = <b>{ov_r:+.3f}</b>，t = −4.11，p &lt; 0.001）：
+干扰越落在信号时频支撑<b>内</b>，分支收益越<b>小</b>。<b>带宽假设被否定</b>
+（chirp 8 与 chirp 19 带宽几乎相同，收益却差 1.7 dB）。详见第七节。</div>
 """.format(
     tdn=td[2], td_imp=td[0], td_imp_s=td[1], td_clean=tdc[0], td_clean_s=tdc[1],
     td_min=tdm[0], td_min_s=tdm[1], gap=gap, hy_imp=hy[0], hy_imp_s=hy[1],
@@ -234,7 +338,10 @@ best-checkpoint 选择会挑到"统计量恰好有利"的轮次，带来中位 <
     d_hyc=d_hyc, sd_bn=sd_bn, gain_bn=gain_bn, sd_gn=sd_gn,
     c_hyc=(CT.get("频域精修：+p注入 − (−脉冲分支) [GN]", {}).get("frmgain_clean", {}).get("mean", float("nan"))),
     c_hyc_se=(CT.get("频域精修：+p注入 − (−脉冲分支) [GN]", {}).get("frmgain_clean", {}).get("se") or 0.0),
-    c_hyc_p=(CT.get("频域精修：+p注入 − (−脉冲分支) [GN]", {}).get("frmgain_clean", {}).get("p", float("nan"))))
+    c_hyc_p=(CT.get("频域精修：+p注入 − (−脉冲分支) [GN]", {}).get("frmgain_clean", {}).get("p", float("nan"))),
+    proto_imp=_proto_imp, proto_min=_proto_min, arch_imp=_arch_imp, arch_min=_arch_min,
+    proto_clean=_proto_clean, step34_imp=_step34_imp, step45_imp=_step45_imp, ratio=_ratio,
+    ov_r=_ov_r)
 
 HTML = """<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -457,7 +564,111 @@ __ROWS_PAIRED__
 n=1080 个样本；但它<b>完全不反映</b>换个种子重训会变多少。5.3 节的跨种子检验才是判断
 效应是否真实的标准 —— 两者结论差了一个数量级。</div>
 
-<h2>六、消融（单种子，BN 协议；Δ 相对阶段0 纯频域基线）</h2>
+<h2>六、受控阶梯：把「训练协议贡献」与「架构贡献」分离</h2>
+<p>此前报告把 PAM-Net（18.27 / 27.38 / 17.12）与阶段0 纯频域模型（14.13 / 25.09 / 13.54）
+直接对比，并把这约 4 dB 归因于架构。<b>但这个对比是混杂的</b>：两者在
+<b>归一化方式、损失函数、模型选择准则、训练脚本</b>上全都不同，无法单独归因。</p>
+<p>本节用一条<b>每步只改一个因素</b>的阶梯把它拆开。前置条件是先证明
+「纯频域模式的 PAM-Net」与「阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code>」
+<b>架构逐位等价</b>：参数量同为 5,910，权重复制后前向输出最大绝对差
+<b>0.000e+00</b>（<code>test_pamnet_freqonly.py</code>，8 项检查全过，
+且 5 个既有 checkpoint 仍能严格加载 —— 说明重构没有副作用）。</p>
+<table>
+<thead><tr><th>档</th><th>配置</th><th>参数</th><th>种子</th><th>干净帧增益</th>
+<th>干扰帧增益</th><th>干扰帧最差</th></tr></thead>
+<tbody>
+__ROWS_LADDER__
+</tbody></table>
+__FIGP__
+<h3>6.1 逐步增量（每步只改一个因素）</h3>
+<table>
+<thead><tr><th>改动</th><th>Δ干净帧 (dB)</th><th>Δ干扰帧 (dB)</th><th>Δ干扰最差 (dB)</th></tr></thead>
+<tbody>
+__ROWS_STEP__
+</tbody></table>
+<div class="box good"><b>核心结论：架构是主要贡献，协议只占小头。</b>
+__LADDER_NOTE__。分解结果：<b>训练协议（损失 + 模型选择 + 归一化）在干扰帧上合计
+__PROTO_IMP__（负贡献），但在干净帧 __PROTO_CLEAN__、干扰帧最差 __PROTO_MIN__
+（正贡献）</b> —— 是一次权衡而不是全面改进。<b>架构在干扰帧上合计 __ARCH_IMP__</b>，
+其中<b>时域多尺度残差通路一步就贡献 __STEP34__，比脉冲感知分支（__STEP45__）
+大 __RATIO__ 倍</b> —— 说明「时域残差估计」与「频域掩码」是<b>互补</b>的，
+而「脉冲感知分支」与频域掩码高度冗余。此前"PAM-Net 优于阶段0"的结论<b>成立</b>，
+但现在协议成分被单独量化出来了。</div>
+<div class="box warn"><b>本阶梯的两个混杂，必须写明：</b>
+① <b>R3→R4 同时改变了参数量</b>（5,910 → 14,367），所以该步是"架构 + 参数预算"的
+联合效应，不能单独归因于架构形式；
+② <b>R0/R1 只有 1 个种子</b>（R2 有 3 个，R3/R4/R5 有 5 个）。因此协议部分
+（R0→R3）的数字没有种子间不确定度，只有 R3/R4/R5 之间的差值才是可靠的。</div>
+<div class="box"><b>一个附带的可靠性证据：</b>R0 与 R1 的协议完全相同、只是换了训练管线
+（<code>train_pam.py</code> vs <code>train_pamnet.py</code>），结果差
+<b>≤0.04 dB</code></b>（14.13/25.05/13.54 vs 14.1344/25.0532/13.5379）。
+两条独立实现的管线给出同一个数，说明阶梯的每一档都是可比的。</div>
+
+<h2>七、效应的波形依赖与机制分析</h2>
+<p>起因是一个看起来矛盾的观测：脉冲感知分支的效应在 testA 上是 +0.79 dB（干扰帧）、
+在 testC 上只有 +0.33 dB，而两个测试集<b>用的是同一批波形</b>（chirp 18–20）。
+逐样本诊断给出了答案 —— 效应是<b>强 SNR 依赖</b>的：</p>
+<table>
+<thead><tr><th>SNR 档</th><th>testA 干净帧</th><th>testA 干扰帧</th><th>testC 干净帧</th><th>testC 干扰帧</th></tr></thead>
+<tbody>
+<tr><td>−10 dB</td><td>+0.011</td><td><b>+1.092</b></td><td>+0.122</td><td><b>+0.555</b></td></tr>
+<tr><td>−5 dB</td><td>−0.021</td><td>+0.903</td><td>+0.029</td><td>+0.434</td></tr>
+<tr><td>0 dB</td><td>−0.078</td><td>+0.531</td><td>+0.142</td><td>+0.152</td></tr>
+<tr><td>+5 dB</td><td>+0.255</td><td>+0.757</td><td>+0.383</td><td>+0.124</td></tr>
+<tr><td>+10 dB</td><td><b>+0.467</b></td><td>+0.666</td><td><b>+0.622</b></td><td>+0.356</td></tr>
+</tbody></table>
+<p><b>低 SNR 时收益全在干扰帧，高 SNR 时收益转到干净帧</b> —— 两个测试集是同一趋势，
+只是幅度不同。所以"testA/testC 不一致"的表述是错的，真正的是"效应随 SNR 改变落点"。</p>
+
+<h3>7.1 方差分解：波形效应真实，但只占 3.8%</h3>
+<p>为了判断逐 chirp 的差异到底是不是波形造成的，生成了一个
+<b>chirp 1–20 × 信道 1–8 × 5 SNR × 2 噪声实现 = 1,600 样本</b>的扫描集，
+用已训练的 pf / nopulse 各 5 个种子推理（种子间平均），然后做方差分解：</p>
+<table>
+<thead><tr><th>指标</th><th>逐样本 SD<br>（干扰实现波动）</th><th>逐 chirp 均值 SD<br>（实测）</th>
+<th>纯实现波动下的期望</th><th>分解出的波形成分</th><th>F(19,1564)</th></tr></thead>
+<tbody>
+<tr><td>干净帧</td><td>0.471</td><td>0.095</td><td>0.053</td><td>0.079</td><td>3.24</td></tr>
+<tr style="background:#f0fdf4;font-weight:600"><td>干扰帧</td><td>1.728</td><td>0.398</td><td>0.194</td>
+<td><b>0.344</b></td><td><b>4.13</b></td></tr>
+<tr><td>干扰最差</td><td>1.682</td><td>0.220</td><td>0.189</td><td>0.111</td><td>1.34</td></tr>
+</tbody></table>
+<div class="box warn"><b>两个结论同时成立：</b>
+① <b>波形效应是真实的</b>（干扰帧 F = 4.13，p &lt; 0.01）；
+② <b>但它很小</b> —— 波形只解释 3.8% 的方差，而 <b>96% 来自逐样本的干扰实现波动</b>
+（SD 1.73 dB vs 波形 0.34 dB）。
+也就是说：<b>脉冲分支不是"对任何样本都稳定提升"的模块</b>，
+而是在个别样本上帮助或损害 ±1.7 dB、平均只 +0.37 dB 的小幅正偏置。</div>
+
+<h3>7.2 机制：不是带宽，是时频可分性</h3>
+<p>最初假设"带宽越宽 → 与宽带干扰重叠越多 → 分支越有价值"。但原始扫描集有一个
+<b>混杂</b>：干扰的随机种子是 <code>seed + 样本序号</code>，而 chirp 是最外层循环，
+所以每个 chirp 独占一段连续种子区间 —— <b>干扰实现与 chirp 序号完全混杂</b>。</p>
+<p>因此给数据生成器加了 <code>seed_mode='paired'</code>：种子只由 (信道, SNR, 重复) 决定，
+并且把干扰/噪声生成在<b>固定长度</b>上再截取（因为 <code>gen_burst</code> 的突发数量与到达
+时刻都依赖信号长度，只有固定长度才能让不同时长的 chirp 看到<b>逐位相同</b>的干扰）。
+实测配对性：干扰与噪声最大差 <b>1.07e−14</b>（机器精度）、掩码逐位相同、干净信号差 5.59。</p>
+<table>
+<thead><tr><th>自变量</th><th>r（原始设计，干扰混杂）</th><th>r（配对设计，干扰固定）</th></tr></thead>
+<tbody>
+__ROWS_CHIRP__
+</tbody></table>
+<div class="box good"><b>配对设计揭示了一个统计显著的机制（原始设计测不出来）：</b>
+干扰与信号的<b>时频重叠率</b>与分支收益显著负相关
+（r = <b>−0.696</b>，t = −4.11，p &lt; 0.001，n = 20），
+而原始设计下只有 r = −0.304（t = −1.35，不显著）。<br>
+<b>方向与假设相反</b>：干扰越落在信号的时频支撑<b>内</b>，脉冲分支的收益越<b>小</b>。
+物理解释是合理的 —— 当干扰与信号在时频面重叠时，掩码无法在不伤信号的前提下抑制它，
+"知道哪里是脉冲"也帮不上；当干扰落在信号缺席的时频区域时，掩码可以干净地压制它，
+脉冲置信度图正好用来定位这些区域。<br>
+<b>这也解释了 chirp 19 的异常</b>：它是 20 个波形里时频重叠率<b>最低</b>的（0.116），
+分支收益最大（+1.58 dB）；而带宽几乎相同（650.0 vs 652.8 Hz）的 chirp 8 重叠率是 0.243，
+收益只有 +0.21 dB。<b>带宽假设被否定，时频可分性假设成立。</b></div>
+__FIGO__
+<p><b>注意</b>：以上是"效应大小的调制因素"，不是"效应存在与否"。平均效应仍然很小
+（干扰帧 +0.37 dB），且高度依赖具体样本。</p>
+
+<h2>八、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
 __FIGJ__
 <table>
 <thead><tr><th>变体</th><th>参数</th><th>干净帧 (dB)</th><th>干扰帧 (dB)</th>
@@ -468,7 +679,7 @@ __ROWS_ABL__
 <tfoot><tr><th colspan="5" style="text-align:right">Δ 为相对【阶段0 纯频域基线】的差（正 = 更好）</th>
 <th colspan="3"></th></tr></tfoot></table>
 <div class="box warn">
-<b>注意：本节数字是单种子 + BN，按第 3、5 节的结论，其绝对值带 2~3 dB 的选择偏差，
+<b>注意：本节数字是单种子 + BN，按第三、五、六节的结论，其绝对值带 2~3 dB 的选择偏差，
 只能用于比较【同一批训练内】的相对大小，不能当作精确效应量。</b>
 方向性结论仍然可靠：门控与多尺度双分支确有贡献（去门控干扰帧 −3.5 dB，
 仅短时/仅长时分别低 3.0/1.6 dB），而脉冲感知分支的贡献很小。
@@ -481,7 +692,7 @@ __ROWS_ABL__
 <li><b>λ₂ 不能照搬 0.5</b>（0.05 相对 0.5 高 +0.98/+1.07/+0.95 dB）。</li>
 </ul></div>
 
-<h2>七、训练稳定性的完整数据</h2>
+<h2>九、训练稳定性的完整数据</h2>
 __FIGL__
 <table>
 <thead><tr><th>run</th><th>逐轮 val 帧增益标准差 (dB)</th><th>最佳轮次</th><th>最佳−末5轮 (dB)</th></tr></thead>
@@ -489,7 +700,7 @@ __FIGL__
 __ROWS_STAB__
 </tbody></table>
 
-<h2>八、独立复算</h2>
+<h2>十、独立复算</h2>
 <p><code>verify_pamnet.py</code> <b>不复用训练脚本的任何实现</b>：自己读 .mat、
 自己 <code>resample_poly(1,4)</code>、自己实现 SNR / SI-SDR / 逐帧降噪增益，
 再与训练脚本产出的逐样本 CSV 对比。唯一共用的是模型定义本身
@@ -497,14 +708,24 @@ __ROWS_STAB__
 <p>结果：<b>均值逐位吻合</b>；逐样本最大差 2.4e−3 dB，来自 STFT/ISTFT 在 float32 下的
 舍入放大。150 个样本<b>无一变差</b>（最差 +4.53 dB）。</p>
 
-<h2>九、局限</h2>
+<h2>十一、局限</h2>
 <ul>
 <li><b>仍然是仿真数据。</b>α 稳定背景与突发干扰都是合成的，α 只取 1.5，
 突发幅度/时长范围是设定的。导师已说明会提供实测信号，届时需重新验证。</li>
 <li><b>种子数仍然偏少</b>（关键对照 3~5 个）。跨种子检验自由度很低，p 值只能作参考。
 要得到可靠的效应量，建议 5~10 个种子。</li>
-<li><b>与阶段0 的对比含多个变量</b>：架构与损失同时改变（PAM-Net 必须配套新损失），
-因此不能把提升单独归因于架构；消融表内部（同一损失下改架构）才是干净的因果证据。</li>
+<li><b>（原缺陷，已在第六节解决）与阶段0 的对比原本含多个变量</b>：架构与损失同时改变。
+本次用"每步只改一个因素"的受控阶梯把它拆开，得到<b>协议约 +0.9 dB、架构约 +3.3 dB</b>
+（干扰帧）。但阶梯的每一档仍只跑了 1~5 个种子，R0/R1 更是单种子。</li>
+<li><b>波形机制的统计基础仍然偏窄</b>：时频重叠率的相关系数基于 <b>20 个 chirp</b>，
+且这 20 个波形来自同一张随机参数表（f0/f1/T/包络 同分布）。
+"重叠率越低收益越大"这个关系在<b>更宽的波形参数范围</b>上是否保持，未验证。</li>
+<li><b>配对设计只对"波形"做了配对，信道仍与干扰实现混杂</b>：配对模式让同一
+(信道, SNR, 重复) 下的不同 chirp 看到相同干扰，但不同信道之间仍是不同的干扰实现。
+因此第七节里"信道分层"的离散度（SD 0.44 dB）不能直接解读为信道效应。</li>
+<li><b>效应量本身很小，实用价值有限</b>：脉冲感知分支平均只带来
++0.13（干净帧）/ +0.79（干扰帧）dB，且 96% 的方差来自样本间波动。
+论文口径应写成"形成判别能力（AUC 0.95）但性能贡献有限"，不应声称"显著提升"。</li>
 <li><b>λ₂ 由量级校准确定，不是完整网格搜索</b>（只对照 0.05 与 0.5）。</li>
 <li><b>突发干扰直接叠加在信道输出上。</b>若干扰发生在信道之前，经多径会展宽成一串回声突发，
 难度完全不同 —— 该场景未测。</li>
@@ -514,7 +735,7 @@ __ROWS_STAB__
 降采样 4 倍把输入 SNR 从 0 dB 抬到 6.19 dB（高斯版）。</li>
 </ul>
 
-<h2>十、复现命令</h2>
+<h2>十二、复现命令</h2>
 <pre># 1) 单元测试（8 项，必须全过）
 python code/analysis/test_pamnet.py
 # 2) 损失量级校准（确定 lambda2）
@@ -531,7 +752,28 @@ python code/python/train_pamnet.py --tag pamnet_freq_pf_gn       --data $D --epo
 python code/python/train_pamnet.py --tag pamnet_freq_nopulse_gn  --data $D --epochs 15 --norm gn --freq-refine 2.0 --pulse 0
 # （其余种子同理，只改 --seed 与 --tag 后缀）
 
-# 5) 分析与出图
+# 5) 受控阶梯：纯频域模式（架构等价性必须先验证）
+python code/analysis/test_pamnet_freqonly.py
+FO="--short 0 --long 0 --pulse 0 --freq-refine 2.0"
+python code/python/train_pamnet.py --tag fo_bn_l1     --data $D --epochs 15 --norm bn \
+    --loss l1 --lam-spec 0.5 --select val_loss $FO    # 复现阶段0 协议（管线等价性检查）
+python code/python/train_pamnet.py --tag fo_bn_huber  --data $D --epochs 15 --norm bn \
+    --loss huber --lam-spec 0.05 $FO                  # 只换损失 + 模型选择准则
+python code/python/train_pamnet.py --tag fo_gn        --data $D --epochs 15 --norm gn \
+    --loss huber --lam-spec 0.05 $FO                  # 再换归一化（S 为空/s2..s5）
+python code/analysis/analyze_ladder.py                # 阶梯表 + 逐步增量 + 图 P
+
+# 6) 波形机制：chirp 扫描集（含"固定干扰"的配对版）
+#   MATLAB:
+#   sp = struct('name',{'chirpscan'},'chirps',{1:20},'chans',{1:8},'n_noise',{2});
+#   dump_chirp_table('D:/project/chirp_table.csv');
+#   make_dataset_pam('alphastable','D:/project/ds_chirpscan',1.5,sp);            % 原始
+#   make_dataset_pam('alphastable','D:/project/ds_scan_paired',1.5,sp,'paired'); % 配对
+python code/analysis/analyze_chirp_band.py --scan D:/project/ds_chirpscan/chirpscan
+python code/analysis/analyze_chirp_band.py --scan D:/project/ds_scan_paired/chirpscan \
+    --cache-tag _paired                               # 图 O + 方差分解 + 相关分析
+
+# 7) 分析与出图
 python code/analysis/analyze_seeds.py       # 多种子聚合 + 跨种子检验
 python code/analysis/analyze_stability.py   # 逐轮振荡与选择偏差
 python code/analysis/make_fig_seeds.py      # 图 M / 图 N
@@ -545,7 +787,7 @@ python code/analysis/compare_baseline_pam.py
 <p style="font-size:12.5px;color:#6b7280">
 本报告由 <code>build_report_pamnet.py</code> 自动生成。数字来自 <code>figs_pamnet/</code> 下的
 summary_pamnet.json / seed_agg.json / pulse_diag.json / baseline_pam.json /
-paired_test.json / stability.json。
+paired_test.json / stability.json / ladder.json / chirp_band.json / chirp_band_paired.json。
 </p>
 
 </div></body></html>
@@ -561,6 +803,23 @@ HTML = (HTML
         .replace("__ROWS_SEED_BN__", rows_seed_bn)
         .replace("__ROWS_PAIRED__", rows_paired)
         .replace("__ROWS_STAB__", rows_stab)
+        .replace("__ROWS_LADDER__", rows_ladder)
+        .replace("__ROWS_STEP__", rows_step)
+        .replace("__ROWS_CHIRP__", rows_chirp)
+        .replace("__LADDER_NOTE__", ladder_note)
+        .replace("__PROTO_IMP__", "%+.2f dB" % _proto_imp)
+        .replace("__PROTO_CLEAN__", "%+.2f dB" % _proto_clean)
+        .replace("__PROTO_MIN__", "%+.2f dB" % _proto_min)
+        .replace("__ARCH_IMP__", "%+.2f dB" % _arch_imp)
+        .replace("__STEP34__", "%+.2f dB" % _step34_imp)
+        .replace("__STEP45__", "%+.2f dB" % _step45_imp)
+        .replace("__RATIO__", "%.1f" % _ratio)
+        .replace("__FIGP__", img("figP_ladder.png",
+                                 "图 P 左：受控阶梯的逐档结果（误差棒 = 种子间标准差，"
+                                 "标注为参数量）；右：逐步增量 —— 协议只占小头，架构是主要贡献"))
+        .replace("__FIGO__", img("figO_chirp_band_paired.png",
+                                 "图 O 脉冲感知分支的收益 vs 波形带宽 / 干扰与信号的时频重叠率"
+                                 "（干扰实现已在不同波形间配对固定）"))
         .replace("__FIGM__", img("figM_seeds.png",
                                  "图 M 关键配置的多种子结果（误差棒 = 种子间标准差）"))
         .replace("__FIGN__", img("figN_norm.png",

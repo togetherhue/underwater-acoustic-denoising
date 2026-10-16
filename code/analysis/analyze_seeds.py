@@ -27,6 +27,11 @@ NUMCOLS = ["n", "snr_in", "snr_out", "sisdr_in", "sisdr_out",
 METRICS = ["frmgain_clean", "frmgain_imp", "frmgain_imp_min", "snr_out"]
 
 CONFIGS = {
+    # ---- 纯频域阶梯（用于把"训练协议贡献"与"架构贡献"分离）----
+    "纯频域 BN/L1+0.5谱 (val_loss)": "fo_bn_l1",
+    "纯频域 BN/Huber+0.05谱 (fg)": "fo_bn_huber",
+    "纯频域 GN/Huber+0.05谱 (fg)": "fo_gn",
+    # ---- 完整 PAM-Net ----
     "纯时域 +脉冲分支（GN）": "pamnet_gn",
     "纯时域 −脉冲分支（GN）": "pamnet_nopulse_gn",
     "频域精修 +p注入（GN）": "pamnet_freq_pf_gn",
@@ -122,6 +127,11 @@ for split in ["testA", "testC"]:
         ("频域精修：+p注入 − (−脉冲分支) [GN]", "频域精修 +p注入（GN）", "频域精修 −脉冲分支（GN）"),
         ("[BN 对照] 纯时域：+ − −", "纯时域 +脉冲分支（BN）", "纯时域 −脉冲分支（BN）"),
         ("[BN 对照] 频域：+ − −", "频域精修 +p注入（BN）", "频域精修 −脉冲分支（BN）"),
+        # ---- 受控阶梯：每一步只改一个因素 ----
+        ("阶梯①损失+选择准则（BN 固定）", "纯频域 BN/Huber+0.05谱 (fg)", "纯频域 BN/L1+0.5谱 (val_loss)"),
+        ("阶梯②归一化（损失固定）", "纯频域 GN/Huber+0.05谱 (fg)", "纯频域 BN/Huber+0.05谱 (fg)"),
+        ("阶梯③加时域残差通路", "频域精修 −脉冲分支（GN）", "纯频域 GN/Huber+0.05谱 (fg)"),
+        ("阶梯④加脉冲感知分支", "频域精修 +p注入（GN）", "频域精修 −脉冲分支（GN）"),
     ]
     out = {}
     for label, a, b in PAIRS:
