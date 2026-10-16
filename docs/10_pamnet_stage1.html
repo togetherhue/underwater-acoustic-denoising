@@ -119,6 +119,9 @@ PAM-Net 与阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code> <b>架构逐位等价
 α=1.2 时跨种子不显著），<b>rate 轴反向</b>（突发越稀疏收益越大：2.5/s 时 +0.98，
 10/s 时 +0.55）—— 后者与第七节的时频重叠机制一致。
 架构优势 R5−R3 也从 α=1.2 的 +4.03 dB 缩到高斯数据上的 +1.07 dB。
+<br><b>并用等有效功率 SNR 的重扫（8.1b）把 α 轴的混杂拆开</b>：单调趋势的<b>尾形成分是真实的</b>，
+但未匹配的 α 扫描<b>夸大了它的幅度</b>（α=1.2 端放大约 1.5 倍；α=1.8 端因强度成分反向
+而几乎掩盖了尾形的增强）。
 <br><b>更重要的方法论发现</b>：SNR 用"75% 分位数匹配"定义时，名义 SNR 固定
 并不代表有效功率 SNR 固定 —— α 从 2.0 降到 1.2，背景噪声的有效功率信噪比从
 <b>+10.84 dB 掉到 -16.36 dB</b>（差 27.2 dB）。
@@ -436,13 +439,77 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 有效 SNR = 10·log₁₀(P<sub>信号</sub>/P<sub>噪声分量</sub>)，在降采样 + 定长后的信号上按样本计算再取中位数；
 背景分量由 <code>v = noisy − clean − imp</code> 精确还原</th></tr></tfoot></table>
 <div class="box warn"><b>这是本轮最重要的方法论发现：把 α 从 2.0 降到 1.2，名义 SNR 不变，
-但背景噪声的有效功率信噪比从 <b>{eff_a20:+.2f} dB 掉到 {eff_a12:+.2f} dB</b>（相差
-{eff_gap:.1f} dB）。</b>
+但背景噪声的有效功率信噪比从 <b>+10.84 dB 掉到 -16.36 dB</b>（相差
+27.2 dB）。</b>
 因此"α 扫描"实际上是<b>两个变量同时变</b>：尾部形状与噪声功率。
 任何把 α 扫描的结果直接解读为"重尾程度的影响"的结论都是不可靠的。
-本节的正确读法是：<b>α 轴 = 背景噪声强度 + 形状的联合偏移</b>，
-而 <b>rate 轴才是干净的单因素操纵</b>（α 不变、背景噪声逐位相同，只有干扰密度翻倍）。
+本节的正确读法是：<b>未匹配的 α 轴 = 背景噪声强度 + 形状的联合偏移</b>，
+而 <b>rate 轴与等功率匹配的 α 条件</b>才是干净的单因素操纵
+（rate 轴：α 不变、背景噪声逐位相同，只有干扰密度翻倍；
+匹配 α 条件：有效功率 SNR 逐档对齐，只有尾形不同 —— 见 8.1b）。
 这一点在后续使用"分位数匹配"定义 SNR 的工作中同样需要注意。</div>
+
+<h3>8.1b 把混杂拆开：等有效功率 SNR 的 α 重扫</h3>
+<p>8.1 节只做到了"发现混杂"。真正要回答的是：<b>未匹配时看到的
+"α 越小脉冲分支收益越小"，是尾形本身造成的，还是噪声功率造成的？</b>
+做法是把名义 SNR 平移对应量，使<b>有效功率 SNR 与 base 一一对应</b>，
+从而把 α 的效应单独隔离出来。平移量按 shift 的<b>中位数</b>确定
+（比均值稳健 —— α 小时样本方差本身是重尾量）：</p>
+<table>
+<thead><tr><th>条件</th><th>α</th><th>名义 SNR 列表（dB）</th><th>平移量</th>
+<th>背景有效 SNR</th><th>干扰有效 SNR</th><th>背景峰/rms</th></tr></thead>
+<tbody>
+<tr><td>base</td><td>1.5</td><td>−10 −5 0 +5 +10</td><td>—（参照）</td>
+    <td>-3.29</td><td>-3.57</td><td>61.5</td></tr>
+<tr><td>m_a12</td><td>1.2</td><td>+3.07 +8.07 +13.07 +18.07 +23.07</td><td>+13.07</td>
+    <td>-3.29</td><td>-3.57</td><td>77.8</td></tr>
+<tr><td>m_a18</td><td>1.8</td><td>−20 −15 −10 −5 0</td><td>−10.00</td>
+    <td>-3.29</td><td>-3.57</td><td>47.8</td></tr>
+<tr><td>a12_r5</td><td>1.2</td><td>−10 −5 0 +5 +10</td><td>0（未匹配）</td>
+    <td>-16.36</td><td>-3.57</td><td>350.5</td></tr>
+<tr><td>a18_r5</td><td>1.8</td><td>−10 −5 0 +5 +10</td><td>0（未匹配）</td>
+    <td>6.71</td><td>-3.57</td><td>15.1</td></tr>
+</tbody></table>
+<div class="box good"><b>匹配质量：两个"匹配条件"（m_a12 / m_a18）的背景有效功率 SNR 与 base 差
+4.0e-03 dB（机器精度），干扰有效 SNR 也完全一致，只有背景峰/rms 不同
+（61.5 / 77.8 / 47.8）—— 正是要隔离的尾形。</b>
+此外样本序号、底层均匀随机数与突发实现在各条件间完全一致（同 seed、
+同 rms_c），构成逐样本配对。</div>
+
+<p>脉冲感知分支效应 Δ = R5 − R4（干扰帧，testA）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th></tr></thead>
+<tbody>
+<tr><td>α=1.2<br><span style='color:#6b7280;font-size:12px'>未匹配</span></td><td>+0.157 ± 0.243<br><span style='color:#6b7280;font-size:12px'>p=0.2212</span></td><td>+0.202 ± 0.435<br><span style='color:#6b7280;font-size:12px'>p=0.3566</span><br><span style='color:#6b7280;font-size:12px'>留一 [+0.09, +0.35]</span></td></tr><tr><td>α=1.2<br><span style='color:#6b7280;font-size:12px'>已匹配</span></td><td>+0.475 ± 0.362<br><span style='color:#6b7280;font-size:12px'>p=0.0427</span></td><td>+0.410 ± 0.312<br><span style='color:#6b7280;font-size:12px'>p=0.0424</span><br><span style='color:#6b7280;font-size:12px'>留一 [+0.31, +0.49]</span></td></tr><tr><td>α=1.5<br><span style='color:#6b7280;font-size:12px'>base</span></td><td>+0.127 ± 0.185<br><span style='color:#6b7280;font-size:12px'>p=0.1988</span></td><td>+0.790 ± 0.319<br><span style='color:#6b7280;font-size:12px'>p=0.0052</span><br><span style='color:#6b7280;font-size:12px'>留一 [+0.67, +0.87]</span></td></tr><tr><td>α=1.8<br><span style='color:#6b7280;font-size:12px'>已匹配</span></td><td>+0.267 ± 0.515<br><span style='color:#6b7280;font-size:12px'>p=0.3106</span></td><td>+1.766 ± 0.927<br><span style='color:#6b7280;font-size:12px'>p=0.0130</span><br><span style='color:#6b7280;font-size:12px'>留一 [+1.40, +1.93]</span></td></tr><tr><td>α=1.8<br><span style='color:#6b7280;font-size:12px'>未匹配</span></td><td>+0.087 ± 0.174<br><span style='color:#6b7280;font-size:12px'>p=0.3240</span></td><td>+1.163 ± 0.312<br><span style='color:#6b7280;font-size:12px'>p=0.0011</span><br><span style='color:#6b7280;font-size:12px'>留一 [+1.06, +1.26]</span></td></tr>
+</tbody></table>
+<p>架构优势 Δ = R5 − R3（testA）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>跨种子 p</th></tr></thead>
+<tbody>
+<tr><td>α=1.2<br><span style='color:#6b7280;font-size:12px'>未匹配</span></td><td>+5.041 ± 0.249</td><td>+4.026 ± 0.472</td><td>4.5e-05</td></tr><tr><td>α=1.2<br><span style='color:#6b7280;font-size:12px'>已匹配</span></td><td>+4.377 ± 0.485</td><td>+3.430 ± 0.210</td><td>3.4e-06</td></tr><tr><td>α=1.5<br><span style='color:#6b7280;font-size:12px'>base</span></td><td>+3.302 ± 0.207</td><td>+3.068 ± 0.235</td><td>8.3e-06</td></tr><tr><td>α=1.8<br><span style='color:#6b7280;font-size:12px'>已匹配</span></td><td>+0.555 ± 0.341</td><td>+1.533 ± 0.616</td><td>5.1e-03</td></tr><tr><td>α=1.8<br><span style='color:#6b7280;font-size:12px'>未匹配</span></td><td>+1.011 ± 0.150</td><td>+1.809 ± 0.204</td><td>3.8e-05</td></tr>
+</tbody></table>
+
+<div class="box warn"><b>判定：两者兼有，且两个方向的分解不对称。</b>
+<ul>
+<li><b>α=1.2 方向</b>（未匹配时效应被压低）：总变化 -0.588 dB =
+强度成分 -0.207 dB + 尾形成分 -0.380 dB。
+即<b>强度解释约 35%</b>、<b>尾形解释约 65%</b>。
+留一法确认均值不被单个种子主导（[+0.312, +0.485]）。</li>
+<li><b>α=1.8 方向</b>（未匹配时效应被抬高）：总变化 +0.373 dB =
+强度成分 -0.603 dB + 尾形成分 +0.976 dB。
+这里<b>两个成分符号相反</b> —— 匹配掉"多余的有效信噪比"后，
+尾形本身的增强作用反而更明显。留一法范围 [+1.398, +1.934]，
+该条件受种子 0 影响较大，但去掉后仍为正值。</li>
+<li><b>共同结论</b>：<b>"背景越脉冲化，脉冲分支收益越小"这个单调趋势是真实的
+（尾形成分），但未匹配的 α 扫描把它的幅度夸大了</b> ——
+在 α=1.2 端放大了约 1.5 倍，在 α=1.8 端则因为强度成分反向而几乎掩盖了尾形的增强。
+因此报告 8.3 节的 α 轴结论应读作<b>尾形与强度的联合效应</b>，
+真正的单因素操纵是 8.1b 的匹配条件。</li>
+</ul></div>
+<p><b>testC（240 样本，功效更低）呈现同样的单调序</b>：匹配功率下
+α=1.2 的干扰帧效应 +0.164 dB &lt; α=1.5 的 +0.325 dB &lt;
+α=1.8 的 +1.310 dB；架构优势同样单调（+3.48 &gt; +2.96
+&gt; +1.68）。方向一致，量级因样本量小而偏低。</p>
 
 <h3>8.2 模型排序在所有条件下都保持</h3>
 <p>把 5 个模型放到 7 个条件上评估（全部零样本，模型只在 base 上训练过）：</p>
@@ -597,13 +664,18 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 而高斯噪声下同样的降采样带来 +6.19 dB 输入 SNR 增益。</li>
 <li><b>两个前端处理需要交代</b>：样本中位有效长度 6,031/8,000（约 24.6% 零填充）；
 降采样 4 倍把输入 SNR 从 0 dB 抬到 6.19 dB（高斯版）。</li>
-<li><b>（第八节新增）α 扫描的 SNR 定义混杂已量化，但未做"等有效功率 SNR"的重扫。</b>
-本轮发现分位数匹配让 α 与有效噪声功率同时变化（−16.4 vs +10.8 dB）。
-正确的做法是<b>固定有效功率 SNR 再扫 α</b>，本轮未做。因此第八节 α 轴上的
-"背景越脉冲化收益越小"应读作<b>强度 + 形状的联合效应</b>。</li>
-<li><b>（第八节新增）域内重训只在 rate=10 一个条件上做</b>，且尚未完成。
-本节的零样本矩阵只能回答"分布偏移下的稳健性"，不能区分
-"分布偏移造成的退化"与"该条件下方法本身的优劣"。α=1.2 的域内重训同样缺失。</li>
+<li><b>（第八节新增）α 扫描的 SNR 定义混杂已量化，并已用等功率重扫拆开。</b>
+分位数匹配让 α 与有效噪声功率同时变化（−16.4 vs +10.8 dB）。
+8.1b 把名义 SNR 平移对应量做了等有效功率重扫，得到：
+<b>α=1.2 端"收益被压低"里强度解释约 35%、尾形解释约 65%</b>；
+α=1.8 端两成分符号相反（强度 −0.60 dB、尾形 +0.98 dB）。
+即单调趋势真实，但未匹配的 α 扫描夸大了幅度。
+剩余缺口：<b>匹配条件只覆盖 α=1.2 与 α=1.8 两个点</b>（α=2.0 需名义 SNR 低至 −24 dB，未做）。</li>
+<li><b>（第八节新增）域内重训只安排了 rate=10 一个条件，且因进程被环境回收而中断。</b>
+本节的零样本矩阵与等功率重扫只能回答"分布偏移下的稳健性"与"尾形 vs 强度"，
+不能区分"分布偏移造成的退化"与"该条件下方法本身的优劣"。
+α=1.2 的域内重训同样缺失。脚本 <code>run_sens_train.sh</code> 已就绪，
+但每次运行须用受管的后台机制启动（裸 <code>nohup &amp;</code> 的进程会被回收）。</li>
 <li><b>（第八节新增）"能识别 ≠ 能提升性能"的因果链未闭环。</b>
 我们证明了判别能力（AUC 0.93~0.96）跨条件几乎不变、而收益跨条件变化 0.2~1.7 dB，
 也证明了收益与时频重叠率负相关；但<b>没有</b>做"人为制造重叠"的干预实验，
@@ -675,7 +747,17 @@ python code/analysis/make_fig_sensitivity.py               # 图 Q / R / S / T
 python code/analysis/diagnose_pulse_sens.py --max 300      # 脉冲分支 AUC 跨条件
 
 # 11) 域内重训（区分"分布偏移"与"方法本身优劣"；后台跑）
+#     注意：必须用受管的后台机制启动（见下方 run_in_background），
+#     裸 nohup & 的进程会被环境回收
 bash code/analysis/run_sens_train.sh            # a15_r10 上 R4/R5 × 3 种子
+
+# 12) 等有效功率 SNR 的 α 重扫（把 α 与噪声强度解耦）
+#   MATLAB（先算 shift，见 analyze_matched.py 第 1 步的输出）:
+#   gen_sensitivity_matched([1 2])   % m_a12 (α=1.2, 名义 +13.07) / m_a18 (α=1.8, 名义 −10.00)
+python code/analysis/eval_sensitivity.py --prep --conds m_a12 m_a18
+python code/analysis/eval_sensitivity.py --conds m_a12 m_a18     --configs R3_freqonly R4_freqrefine_nopulse R5_freqrefine_pulse     --nshard 3 --shard 0     # 3 路并行
+python code/analysis/analyze_matched.py --split testA   # 强度/尾形分解 + 留一法
+python code/analysis/analyze_matched.py --split testC
 </pre>
 
 <hr>

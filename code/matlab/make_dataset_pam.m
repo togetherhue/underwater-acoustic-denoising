@@ -1,4 +1,4 @@
-function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed_mode, burst_override)
+function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed_mode, burst_override, snr_override)
 %MAKE_DATASET_PAM  按导师方案生成"非高斯脉冲噪声 + 突发干扰"数据集
 %==========================================================================
 %  信号模型（老师文档第一节）：
@@ -34,6 +34,7 @@ if nargin < 3 || isempty(alpha_val);  alpha_val = 1.5; end
 if nargin < 4; splits_override = []; end
 if nargin < 5 || isempty(seed_mode); seed_mode = 'index'; end
 if nargin < 6; burst_override = []; end
+if nargin < 7 || isempty(snr_override); snr_override = []; end
 
 cfg.fs_chirp     = 9600;
 cfg.fs           = 24000;
@@ -47,6 +48,17 @@ cfg.noise_type    = lower(noise_type);
 cfg.alpha         = alpha_val;
 cfg.beta          = 0;                     % 对称 α 稳定分布
 cfg.Q75_GAUSS     = 0.6745;                % q75(|N(0,1)|)
+
+% 可选：覆盖 SNR 列表（用于"等有效功率 SNR 的 α 重扫"）。
+% 背景：q75 匹配让名义 SNR 固定，但 α<2 时方差无穷，有效功率 SNR 会随 α 大幅漂移
+%   （实测 shift = 有效SNR − 名义SNR：α=1.5 为 +6.7 dB、α=1.2 为 −6.4 dB、
+%    α=1.8 为 +16.7 dB、α=2.0 为 +20.8 dB）。若不做等功率重扫，
+%   "α 扫描"实际同时改变了噪声强度与尾形，无法归因。
+% 用法：make_dataset_pam('alphastable', root, 1.2, sp, 'index', [], [-10 -5 0 5 10]+13.07)
+if ~isempty(snr_override)
+    assert(isnumeric(snr_override) && isvector(snr_override), 'snr_override 必须是数值向量');
+    cfg.snr_list = snr_override(:).';
+end
 
 % 噪声/干扰的随机数种子模式：
 %   'index'  （默认）种子 = seed + 样本序号 cnt。由于 chirp 是最外层循环，
