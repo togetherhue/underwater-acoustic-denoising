@@ -1,4 +1,4 @@
-function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed_mode)
+function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed_mode, burst_override)
 %MAKE_DATASET_PAM  按导师方案生成"非高斯脉冲噪声 + 突发干扰"数据集
 %==========================================================================
 %  信号模型（老师文档第一节）：
@@ -33,6 +33,7 @@ if nargin < 2 || isempty(out_root);   out_root = fullfile('D:/project/dataset_pa
 if nargin < 3 || isempty(alpha_val);  alpha_val = 1.5; end
 if nargin < 4; splits_override = []; end
 if nargin < 5 || isempty(seed_mode); seed_mode = 'index'; end
+if nargin < 6; burst_override = []; end
 
 cfg.fs_chirp     = 9600;
 cfg.fs           = 24000;
@@ -64,6 +65,17 @@ cfg.N_ref         = 36000;                 % > 任意 chirp 的信号长度（�
 cfg.burst = struct('rate', 5, 'dur_range', [0.002, 0.030], ...
                    'amp_range', [4, 25], 'type_prob', [0.25 0.30 0.25 0.20], ...
                    'freq_range', [200, 2600], 'bw_frac', [0.15 0.60]);
+
+% 可选：覆盖任意突发参数（用于"干扰强度/密度"敏感性实验）。
+% 用法：make_dataset_pam('alphastable', root, 1.5, sp, 'index', struct('rate',10))
+if ~isempty(burst_override)
+    assert(isstruct(burst_override), 'burst_override 必须是 struct');
+    fn = fieldnames(burst_override);
+    for ii = 1:numel(fn)
+        assert(isfield(cfg.burst, fn{ii}), '未知突发参数 %s', fn{ii});
+        cfg.burst.(fn{ii}) = burst_override.(fn{ii});
+    end
+end
 
 if isempty(splits_override)
     splits = struct( ...

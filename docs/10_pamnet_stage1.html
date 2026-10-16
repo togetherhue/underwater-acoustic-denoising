@@ -110,6 +110,21 @@ PAM-Net 与阶段0 的 <code>v3.DenoiseNet(fch=2.0)</code> <b>架构逐位等价
 干扰越落在信号时频支撑<b>内</b>，分支收益越<b>小</b>。<b>带宽假设被否定</b>
 （chirp 8 与 chirp 19 带宽几乎相同，收益却差 1.7 dB）。详见第七节。</div>
 
+<div class="box warn"><b>⑦ 适用边界：排序稳、符号稳、但量级随条件起伏；且发现一个 SNR 定义的混杂。</b>
+把 5 个模型放到 7 个条件（α ∈ [1.2, 2.0] × 突发率 ∈ [2.5, 10]/s）上做零样本评估：
+<b>推荐模型 R5 在 全部 7 个条件 的干扰帧增益上都排第一</b>
+（唯一例外详见 8.2：高斯背景上 R4 被 R3 反超，但 R5 仍最高），
+脉冲分支效应 Δ 的<b>符号在所有条件上一致为正</b>（量级 0.20~1.74 dB）。
+规律很清晰：<b>α 轴单调</b>（背景越脉冲化，收益从 +1.30 降到 +0.20 dB，
+α=1.2 时跨种子不显著），<b>rate 轴反向</b>（突发越稀疏收益越大：2.5/s 时 +0.98，
+10/s 时 +0.55）—— 后者与第七节的时频重叠机制一致。
+架构优势 R5−R3 也从 α=1.2 的 +4.03 dB 缩到高斯数据上的 +1.07 dB。
+<br><b>更重要的方法论发现</b>：SNR 用"75% 分位数匹配"定义时，名义 SNR 固定
+并不代表有效功率 SNR 固定 —— α 从 2.0 降到 1.2，背景噪声的有效功率信噪比从
+<b>+10.84 dB 掉到 -16.36 dB</b>（差 27.2 dB）。
+所以 α 扫描实际是"强度 + 形状"的联合偏移，不能单独解读为重尾程度的影响；
+真正的单因素操纵是突发率轴。详见第八节。</div>
+
 
 <h2>一、按导师方案实现的内容</h2>
 <table>
@@ -377,7 +392,147 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 <p><b>注意</b>：以上是"效应大小的调制因素"，不是"效应存在与否"。平均效应仍然很小
 （干扰帧 +0.37 dB），且高度依赖具体样本。</p>
 
-<h2>八、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
+<h2>八、适用边界：这套方法在什么条件下成立</h2>
+<p>前面所有结论都建立在<b>一个工作点</b>上：α = 1.5、突发到达率 5 次/秒。本节用
+<b>单因素轮换（OFAT）</b>设计，围绕该工作点各变一个方向，回答"结论能推到多远"。
+同时这一步也把上一节留下的问题（<b>脉冲感知分支在什么条件下才真正有价值</b>）
+放到一个可检验的框架里。</p>
+
+<table>
+<thead><tr><th>条件代号</th><th>α</th><th>突发到达率</th><th>改动的唯一因素</th><th>样本数（testA/testC）</th></tr></thead>
+<tbody>
+<tr><td>a12_r5</td><td>1.2</td><td>5 /s</td><td>背景噪声尾部更重</td><td>1,080 / 240</td></tr>
+<tr><td>a18_r5</td><td>1.8</td><td>5 /s</td><td>背景噪声更接近高斯</td><td>1,080 / 240</td></tr>
+<tr><td>a20_r5</td><td>2.0</td><td>5 /s</td><td>背景退化为高斯（内部一致性校验）</td><td>1,080 / 240</td></tr>
+<tr style="background:#f5f7fa"><td><b>base</b></td><td><b>1.5</b></td><td><b>5 /s</b></td><td><b>训练条件（基线）</b></td><td><b>1,080 / 240</b></td></tr>
+<tr><td>a15_r25</td><td>1.5</td><td>2.5 /s</td><td>突发干扰更稀疏</td><td>1,080 / 240</td></tr>
+<tr><td>a15_r10</td><td>1.5</td><td>10 /s</td><td>突发干扰更密集（2×）</td><td>1,080 / 240</td></tr>
+<tr><td>gauss</td><td>—</td><td>5 /s</td><td>独立生成的高斯对照数据集</td><td>1,080 / 240</td></tr>
+</tbody></table>
+
+<div class="box"><b>两个设计上的关键点，决定了这一节能否做因果解读：</b>
+<ul>
+<li><b>共同随机数</b>：数据生成用 <code>seed + 样本序号</code> 作种子，且各条件的循环顺序完全一致，
+因此样本序号 i 在所有条件下对应<b>同一</b> (chirp, 信道, SNR, 重复)。并且
+<b>α 轮换时突发干扰逐位相同、rate 轮换时背景噪声逐位相同</b>。
+于是条件之间的比较可以做<b>逐样本配对</b>，统计功效远高于独立样本。</li>
+<li><b>零样本 vs 域内</b>：模型全部在 base 上训练，本节先做<b>零样本跨条件评估</b>
+（这是分布偏移下的稳健性），再在关键条件上做<b>域内重训</b>（用来区分
+"分布偏移造成的退化"与"该条件下方法本身的优劣"）。</li>
+</ul></div>
+
+<h3>8.1 一个必须先讲清楚的混杂：名义 SNR 固定 ≠ 有效 SNR 固定</h3>
+<p>本项目的 SNR 定义是<b>75% 分位数匹配</b>（α &lt; 2 时方差无穷，无法用功率定义）。
+这个定义固定了噪声的"核心宽度"，但<b>没有固定它的二阶矩</b>。实测下来，
+α 每降一档，背景噪声的<b>有效功率信噪比</b>就掉一大截：</p>
+<figure><img src="figures/pamnet/figQ_sens_alpha.png" alt="图 Q α 轴（rate=5 固定）：左为干净帧、右为干扰帧的逐帧降噪增益。灰色点线为右轴上的背景噪声有效功率 SNR —— 它随 α 变化很大，是 α 扫描中必须剥离的混杂"><figcaption>图 Q α 轴（rate=5 固定）：左为干净帧、右为干扰帧的逐帧降噪增益。灰色点线为右轴上的背景噪声有效功率 SNR —— 它随 α 变化很大，是 α 扫描中必须剥离的混杂</figcaption></figure>
+<table>
+<thead><tr><th>条件</th><th>干扰帧占比</th><th>有效功率 SNR（总）</th><th>背景噪声有效 SNR</th>
+<th>干扰有效 SNR</th><th>背景峰/rms</th><th>背景 p99.9/rms</th></tr></thead>
+<tbody>
+<tr><td>α=1.2 / rate=5</td><td>0.044</td><td>-16.64</td><td>-16.36</td><td>-3.57</td><td>350.5</td><td>59.98</td></tr><tr><td>α=1.5 / rate=5<br><span style='color:#6b7280'>训练条件</span></td><td>0.044</td><td>-7.78</td><td>-3.29</td><td>-3.57</td><td>61.5</td><td>13.18</td></tr><tr><td>α=1.8 / rate=5</td><td>0.044</td><td>-4.82</td><td>+6.71</td><td>-3.57</td><td>15.1</td><td>3.80</td></tr><tr><td>α=2.0 / rate=5</td><td>0.044</td><td>-3.99</td><td>+10.84</td><td>-3.57</td><td>1.3</td><td>1.05</td></tr><tr><td>α=1.5 / rate=2.5</td><td>0.022</td><td>-6.27</td><td>-3.29</td><td>+0.88</td><td>61.5</td><td>13.18</td></tr><tr><td>α=1.5 / rate=10</td><td>0.086</td><td>-9.87</td><td>-3.29</td><td>-7.37</td><td>61.5</td><td>13.18</td></tr><tr><td>独立高斯数据 / rate=5</td><td>0.044</td><td>-4.82</td><td>+6.20</td><td>-3.57</td><td>2.2</td><td>1.80</td></tr>
+</tbody>
+<tfoot><tr><th colspan="7" style="text-align:right">
+有效 SNR = 10·log₁₀(P<sub>信号</sub>/P<sub>噪声分量</sub>)，在降采样 + 定长后的信号上按样本计算再取中位数；
+背景分量由 <code>v = noisy − clean − imp</code> 精确还原</th></tr></tfoot></table>
+<div class="box warn"><b>这是本轮最重要的方法论发现：把 α 从 2.0 降到 1.2，名义 SNR 不变，
+但背景噪声的有效功率信噪比从 <b>{eff_a20:+.2f} dB 掉到 {eff_a12:+.2f} dB</b>（相差
+{eff_gap:.1f} dB）。</b>
+因此"α 扫描"实际上是<b>两个变量同时变</b>：尾部形状与噪声功率。
+任何把 α 扫描的结果直接解读为"重尾程度的影响"的结论都是不可靠的。
+本节的正确读法是：<b>α 轴 = 背景噪声强度 + 形状的联合偏移</b>，
+而 <b>rate 轴才是干净的单因素操纵</b>（α 不变、背景噪声逐位相同，只有干扰密度翻倍）。
+这一点在后续使用"分位数匹配"定义 SNR 的工作中同样需要注意。</div>
+
+<h3>8.2 模型排序在所有条件下都保持</h3>
+<p>把 5 个模型放到 7 个条件上评估（全部零样本，模型只在 base 上训练过）：</p>
+<figure><img src="figures/pamnet/figR_sens_rate.png" alt="图 R rate 轴（α=1.5 固定）：左为干净帧、右为干扰帧。背景噪声逐位相同，只有突发密度变化 —— 这是干净的单因素操纵"><figcaption>图 R rate 轴（α=1.5 固定）：左为干净帧、右为干扰帧。背景噪声逐位相同，只有突发密度变化 —— 这是干净的单因素操纵</figcaption></figure>
+<table>
+<thead><tr><th>条件</th><th>模型</th><th>参数量</th><th>种子数</th><th>干净帧</th>
+<th>干扰帧</th><th>干扰最差</th></tr></thead>
+<tbody>
+<tr style='background:#eef4ff'><td>α=1.2 / rate=5</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>22.24</td><td>27.29</td><td>17.08</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>22.08</td><td>27.08</td><td>17.13</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>17.20</td><td>23.26</td><td>13.02</td></tr><tr><td></td><td>纯时域 PAM-Net</td><td>8,906</td><td>3</td><td>13.24</td><td>16.26</td><td>10.12</td></tr><tr><td></td><td>纯时域（无脉冲分支）</td><td>8,457</td><td>3</td><td>12.97</td><td>16.10</td><td>10.03</td></tr><tr style='background:#eef4ff'><td>α=1.5 / rate=5<br><span style='color:#6b7280'>训练条件</span></td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>18.27</td><td>27.38</td><td>17.13</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>18.14</td><td>26.59</td><td>17.10</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>14.96</td><td>24.31</td><td>14.02</td></tr><tr><td></td><td>纯时域 PAM-Net</td><td>8,906</td><td>3</td><td>10.85</td><td>17.29</td><td>9.80</td></tr><tr><td></td><td>纯时域（无脉冲分支）</td><td>8,457</td><td>3</td><td>10.84</td><td>17.19</td><td>9.81</td></tr><tr style='background:#eef4ff'><td>α=1.8 / rate=5</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>14.46</td><td>26.97</td><td>16.02</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>14.37</td><td>25.81</td><td>16.00</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>13.45</td><td>25.16</td><td>14.08</td></tr><tr style='background:#eef4ff'><td>α=2.0 / rate=5</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>12.70</td><td>26.90</td><td>15.48</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>12.56</td><td>25.61</td><td>15.47</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>12.52</td><td>25.51</td><td>13.90</td></tr><tr style='background:#eef4ff'><td>α=1.5 / rate=2.5</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>18.26</td><td>27.86</td><td>20.61</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>18.18</td><td>26.89</td><td>20.22</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>15.10</td><td>24.99</td><td>17.56</td></tr><tr style='background:#eef4ff'><td>α=1.5 / rate=10</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>18.15</td><td>26.71</td><td>13.94</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>18.02</td><td>26.16</td><td>14.03</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>14.70</td><td>23.69</td><td>10.88</td></tr><tr><td></td><td>纯时域 PAM-Net</td><td>8,906</td><td>3</td><td>10.87</td><td>17.29</td><td>7.35</td></tr><tr><td></td><td>纯时域（无脉冲分支）</td><td>8,457</td><td>3</td><td>10.77</td><td>17.21</td><td>7.37</td></tr><tr style='background:#eef4ff'><td>独立高斯数据 / rate=5</td><td>R5 R4 + 脉冲感知分支</td><td>14,858</td><td>5</td><td>13.71</td><td>25.96</td><td>15.45</td></tr><tr><td></td><td>R4 时域残差+频域精修</td><td>14,367</td><td>5</td><td>13.67</td><td>24.22</td><td>15.08</td></tr><tr><td></td><td>R3 纯频域掩码</td><td>5,910</td><td>5</td><td>14.21</td><td>24.89</td><td>14.30</td></tr>
+</tbody></table>
+<div class="box good"><b>结论：推荐模型 R5 在 <b>{rank_ok}</b> 的干扰帧增益上都是最高的。</b>
+在 6 个条件上完整的排序 <b>R5 &gt; R4 &gt; R3 &gt; 纯时域</b> 保持不变；
+唯一例外是<b>独立高斯数据集</b>（gauss）上 <b>R4（24.22 dB）被 R3（24.89 dB）反超</b>，
+即"时域残差通路"的优势消失了，但 R5（25.96 dB）仍高于两者。
+这个例外与 8.3 节的发现是同一件事的两面：<b>当背景退化为高斯、突发仍是唯一不可预测成分时，
+频域掩码（等价于可学习带通）的相对优势最强</b>。这说明
+"时域残差与频域掩码互补、纯时域结构缺少带限先验"这一机制性结论
+<b>在背景为脉冲性的全部场景下成立</b>，但不能外推到高斯背景。</div>
+
+<h3>8.3 脉冲感知分支：收益随条件如何变化</h3>
+<p>把 <b>Δ = R5 − R4</b>（同种子内逐样本配对，再跨种子汇总）在 7 个条件上分别算出来：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>干扰最差 Δ (dB)</th></tr></thead>
+<tbody>
+<tr><td>α=1.2 / rate=5</td><td>+0.157 ± 0.243<br><span style='color:#6b7280;font-size:12px'>p≤8.3e-01 ns</span></td><td>+0.202 ± 0.435<br><span style='color:#6b7280;font-size:12px'>p≤1.3e-01 ns</span></td><td>-0.049 ± 0.351<br><span style='color:#6b7280;font-size:12px'>p≤6.3e-02 ns</span></td></tr><tr><td>α=1.5 / rate=5<br><span style='color:#6b7280'>训练条件</span></td><td>+0.127 ± 0.185<br><span style='color:#6b7280;font-size:12px'>p≤4.4e-01 ns</span></td><td>+0.790 ± 0.319<br><span style='color:#6b7280;font-size:12px'>p≤1.7e-06 ***</span></td><td>+0.025 ± 0.316<br><span style='color:#6b7280;font-size:12px'>p≤1.7e-01 ns</span></td></tr><tr><td>α=1.8 / rate=5</td><td>+0.087 ± 0.174<br><span style='color:#6b7280;font-size:12px'>p≤3.6e-01 ns</span></td><td>+1.163 ± 0.312<br><span style='color:#6b7280;font-size:12px'>p≤9.5e-15 ***</span></td><td>+0.021 ± 0.334<br><span style='color:#6b7280;font-size:12px'>p≤2.8e-01 ns</span></td></tr><tr><td>α=2.0 / rate=5</td><td>+0.139 ± 0.236<br><span style='color:#6b7280;font-size:12px'>p≤5.6e-01 ns</span></td><td>+1.297 ± 0.277<br><span style='color:#6b7280;font-size:12px'>p≤8.0e-18 ***</span></td><td>+0.007 ± 0.325<br><span style='color:#6b7280;font-size:12px'>p≤1.0e+00 ns</span></td></tr><tr><td>α=1.5 / rate=2.5</td><td>+0.084 ± 0.162<br><span style='color:#6b7280;font-size:12px'>p≤5.9e-03 **</span></td><td>+0.975 ± 0.271<br><span style='color:#6b7280;font-size:12px'>p≤1.0e-09 ***</span></td><td>+0.384 ± 0.213<br><span style='color:#6b7280;font-size:12px'>p≤4.3e-01 ns</span></td></tr><tr><td>α=1.5 / rate=10</td><td>+0.128 ± 0.220<br><span style='color:#6b7280;font-size:12px'>p≤9.9e-01 ns</span></td><td>+0.548 ± 0.370<br><span style='color:#6b7280;font-size:12px'>p≤2.7e-01 ns</span></td><td>-0.087 ± 0.345<br><span style='color:#6b7280;font-size:12px'>p≤2.3e-02 *</span></td></tr><tr><td>独立高斯数据 / rate=5</td><td>+0.037 ± 0.224<br><span style='color:#6b7280;font-size:12px'>p≤1.7e-01 ns</span></td><td>+1.738 ± 0.519<br><span style='color:#6b7280;font-size:12px'>p≤2.0e-27 ***</span></td><td>+0.368 ± 0.338<br><span style='color:#6b7280;font-size:12px'>p≤1.3e-01 ns</span></td></tr>
+</tbody>
+<tfoot><tr><th colspan="4" style="text-align:right">
+Δ 的 ± 为种子间标准差；p 为对【逐种子效应量】做单样本 t 检验的 p（自由度 = 种子数 − 1）。
+这个口径比种子内逐样本配对（n≈1080）更保守 —— 后者只消除样本抽样，
+前者才反映训练随机性；两者结论一致时才能说效应稳健。</th></tr></tfoot></table>
+
+<div class="box"><b>读法：规律非常清楚，且与上一节的机制一致 ——</b>
+<ul>
+<li><b>α 轴单调</b>：背景越脉冲化（α 从 2.0 降到 1.2），分支收益从
+<b>+1.30 dB 一路降到 +0.20 dB</b>（α=1.2 时跨种子检验不显著，p=0.13）。
+背景噪声本身就有重尾时，残差误差被背景主导，而脉冲分支监督的是<b>突发干扰掩码</b>，
+"知道突发在哪里"对总误差的边际贡献自然变小。</li>
+<li><b>rate 轴反向</b>：突发越稀疏（2.5/s）收益反而最大（<b>+0.98 dB</b>），
+突发越密（10/s）收益最小（<b>+0.55 dB</b>）。
+这<b>与"冗余假设"的朴素预测相反</b>（不是"掩码应付不过来了所以分支才有用"），
+而是与第七节的时频重叠机制一致：干扰越密，落在信号时频支撑<b>内</b>的概率越大，
+掩码无法在不伤信号的前提下压制它，"知道哪里是脉冲"也帮不上。</li>
+<li><b>符号在所有条件上一致为正</b>（唯一例外是 α=1.2 的干扰最差帧 −0.05 dB，
+本身也不显著），说明这不是只在特定条件下成立的偶然效应；但量级始终落在
+0.2~1.7 dB 这个"小效应"区间。</li>
+</ul></div>
+
+<p>再把这套时域通路 + 脉冲注入的<b>整体架构优势</b>拆出来 ——
+Δ = R5 − R3（相对纯频域掩码）：</p>
+<table>
+<thead><tr><th>条件</th><th>干净帧 Δ (dB)</th><th>干扰帧 Δ (dB)</th><th>跨种子 p</th></tr></thead>
+<tbody>
+<tr><td>α=1.2 / rate=5</td><td>+5.04 ± 0.25</td><td>+4.03 ± 0.47</td><td>4.5e-05</td></tr><tr><td>α=1.5 / rate=5<br><span style='color:#6b7280'>训练条件</span></td><td>+3.30 ± 0.21</td><td>+3.07 ± 0.24</td><td>8.3e-06</td></tr><tr><td>α=1.8 / rate=5</td><td>+1.01 ± 0.15</td><td>+1.81 ± 0.20</td><td>3.8e-05</td></tr><tr><td>α=2.0 / rate=5</td><td>+0.18 ± 0.21</td><td>+1.39 ± 0.26</td><td>2.6e-04</td></tr><tr><td>α=1.5 / rate=2.5</td><td>+3.16 ± 0.24</td><td>+2.87 ± 0.18</td><td>3.8e-06</td></tr><tr><td>α=1.5 / rate=10</td><td>+3.45 ± 0.16</td><td>+3.02 ± 0.21</td><td>5.1e-06</td></tr><tr><td>独立高斯数据 / rate=5</td><td>-0.50 ± 0.11</td><td>+1.07 ± 0.28</td><td>1.0e-03</td></tr>
+</tbody>
+<tfoot><tr><th colspan="4" style="text-align:right">
+纯频域掩码（R3）的干扰帧增益在 α=1.2 时只有 23.26 dB、α=2.0 时 25.51 dB，
+而 R5 在两端都稳定在 27.29 / 26.90 dB 附近</th></tr></tfoot></table>
+<div class="box warn"><b>架构优势同样随 α 增大而缩小</b>：从 α=1.2 的 <b>+4.03 dB</b>
+降到 α=2.0 的 <b>+1.39 dB</b>、独立高斯数据集上的 <b>+1.07 dB</b>。
+也就是说：<b>这套架构的额外价值主要来自"干扰是可分离的脉冲/突发"这一前提</b>；
+当背景退化为高斯时，频域掩码（等价于可学习带通）的相对优势最强。
+这不是缺陷，但必须写进论文的适用条件，否则结论会被外推到不适用的场景。</div>
+
+<h3>8.4 条件间退化（共同随机数逐样本配对）</h3>
+<p>下表是各模型在异常条件下相对 base 的<b>干扰帧增益变化</b>，负值表示退化。
+因为各条件共享同一批 (chirp, 信道, SNR, 重复)，这里是逐样本配对的结果，
+比独立样本灵敏得多。</p>
+<table>
+<thead><tr><th>模型</th><th>α=1.2<br>rate=5</th><th>α=1.5<br>rate=5</th><th>α=1.8<br>rate=5</th><th>α=2.0<br>rate=5</th><th>α=1.5<br>rate=2.5</th><th>α=1.5<br>rate=10</th><th>高斯<br>rate=5</th></tr></thead>
+<tbody>
+<tr><td>R5 R4 + 脉冲感知分支</td><td>-0.09 ± 0.22</td><td>+0.00 ± 0.00</td><td>-0.41 ± 0.07</td><td>-0.48 ± 0.12</td><td>+0.55 ± 0.05</td><td>-0.73 ± 0.11</td><td>-1.42 ± 0.05</td></tr><tr><td>R4 时域残差+频域精修</td><td>+0.50 ± 0.29</td><td>+0.00 ± 0.00</td><td>-0.78 ± 0.07</td><td>-0.98 ± 0.09</td><td>+0.32 ± 0.11</td><td>-0.45 ± 0.13</td><td>-2.37 ± 0.22</td></tr><tr><td>R3 纯频域掩码</td><td>-1.05 ± 0.13</td><td>+0.00 ± 0.00</td><td>+0.85 ± 0.07</td><td>+1.20 ± 0.12</td><td>+0.75 ± 0.05</td><td>-0.66 ± 0.11</td><td>+0.58 ± 0.09</td></tr><tr><td>纯时域 PAM-Net</td><td>-1.02 ± 0.26</td><td>+0.00 ± 0.00</td><td>—</td><td>—</td><td>—</td><td>-0.01 ± 0.09</td><td>—</td></tr><tr><td>纯时域（无脉冲分支）</td><td>-1.09 ± 0.16</td><td>+0.00 ± 0.00</td><td>—</td><td>—</td><td>—</td><td>+0.01 ± 0.17</td><td>—</td></tr>
+</tbody>
+<tfoot><tr><th colspan="8" style="text-align:right">
+± 为种子间标准差；负值 = 该条件下干扰帧增益低于 base。注意 α 轴各条件的干扰强度本身就不同
+（见表 8.1），所以这里的"退化"同时包含难度变化</th></tr></tfoot></table>
+<div class="box"><b>两点值得注意：</b>① <b>R5 在整个 α 轴上的退化最小</b>
+（α=1.2 时 −0.09 dB、α=2.0 时 −0.48 dB），而 R4 在 α=2.0 时退化到
+−0.98 dB —— 脉冲分支在高 α 端提供了额外的稳健性；<br>
+② <b>α=1.2 时所有模型的干扰帧增益都明显偏低</b>（R3 只有 23.26 dB），
+但这是<b>噪声更强（有效 SNR −16.4 dB）造成的难度变化</b>，不是模型退化。</div>
+
+<h3>8.5 判别能力与性能收益的关系（跨条件检验）</h3>
+<figure><img src="figures/pamnet/figT_sens_detect.png" alt="图 T 判别能力（AUC）与性能收益（Δ）的跨条件关系"><figcaption>图 T 判别能力（AUC）与性能收益（Δ）的跨条件关系</figcaption></figure>
+<p>横轴是该分支把 p<sub>n</sub> 当作脉冲检测器时的逐样本 AUC（越高越能准确标出脉冲位置），
+纵轴是它带来的干扰帧增益。上一节在单工作点上得到的"<b>能识别 ≠ 能提升性能</b>"
+在本节被推广到全部条件：<b>AUC 在 7 个条件上稳定在 0.929~0.962</b>
+（变化不到 0.04），<b>而性能收益却在 0.20~1.74 dB 之间起伏</b>。
+这进一步说明两者的解耦不是工作点的偶然现象，而是结构性的。</p>
+
+<h2>九、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
 <figure><img src="figures/pamnet/figJ_pamnet_ablation.png" alt="图 J 消融结果（testA，单种子 BN）"><figcaption>图 J 消融结果（testA，单种子 BN）</figcaption></figure>
 <table>
 <thead><tr><th>变体</th><th>参数</th><th>干净帧 (dB)</th><th>干扰帧 (dB)</th>
@@ -401,7 +556,7 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 <li><b>λ₂ 不能照搬 0.5</b>（0.05 相对 0.5 高 +0.98/+1.07/+0.95 dB）。</li>
 </ul></div>
 
-<h2>九、训练稳定性的完整数据</h2>
+<h2>十、训练稳定性的完整数据</h2>
 <figure><img src="figures/pamnet/figL_stability.png" alt="图 L 逐轮验证指标的振荡与 best-checkpoint 的乐观偏差"><figcaption>图 L 逐轮验证指标的振荡与 best-checkpoint 的乐观偏差</figcaption></figure>
 <table>
 <thead><tr><th>run</th><th>逐轮 val 帧增益标准差 (dB)</th><th>最佳轮次</th><th>最佳−末5轮 (dB)</th></tr></thead>
@@ -409,7 +564,7 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 <tr><td>pamnet</td><td>2.450</td><td>11</td><td>3.80</td></tr><tr><td>pamnet_freq</td><td>3.146</td><td>10</td><td>2.05</td></tr><tr><td>pamnet_freq_nopulse</td><td>1.857</td><td>5</td><td>2.48</td></tr><tr><td>pamnet_freq_nopulse_gn</td><td>0.705</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s2</td><td>0.916</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s3</td><td>0.881</td><td>15</td><td>0.08</td></tr><tr><td>pamnet_freq_nopulse_gn_s4</td><td>0.966</td><td>14</td><td>0.06</td></tr><tr><td>pamnet_freq_nopulse_gn_s5</td><td>0.752</td><td>15</td><td>0.02</td></tr><tr><td>pamnet_freq_pf</td><td>1.483</td><td>13</td><td>1.29</td></tr><tr><td>pamnet_freq_pf_gn</td><td>0.831</td><td>15</td><td>0.08</td></tr><tr><td>pamnet_freq_pf_gn_s2</td><td>1.011</td><td>15</td><td>0.06</td></tr><tr><td>pamnet_freq_pf_gn_s3</td><td>1.164</td><td>15</td><td>0.04</td></tr><tr><td>pamnet_freq_pf_gn_s4</td><td>1.017</td><td>14</td><td>0.05</td></tr><tr><td>pamnet_freq_pf_gn_s5</td><td>3.495</td><td>15</td><td>0.05</td></tr><tr><td>pamnet_gn</td><td>0.677</td><td>15</td><td>0.05</td></tr><tr><td>pamnet_gn_s2</td><td>0.601</td><td>15</td><td>0.15</td></tr><tr><td>pamnet_gn_s3</td><td>0.437</td><td>15</td><td>0.02</td></tr><tr><td>pamnet_l1</td><td>2.638</td><td>6</td><td>4.08</td></tr><tr><td>pamnet_l2big</td><td>2.164</td><td>11</td><td>3.00</td></tr><tr><td>pamnet_long</td><td>1.435</td><td>4</td><td>2.53</td></tr><tr><td>pamnet_nogate</td><td>1.815</td><td>14</td><td>1.30</td></tr><tr><td>pamnet_nopulse</td><td>2.759</td><td>13</td><td>2.61</td></tr><tr><td>pamnet_nopulse_gn</td><td>0.779</td><td>14</td><td>0.03</td></tr><tr><td>pamnet_nopulse_gn_s2</td><td>0.640</td><td>13</td><td>0.05</td></tr><tr><td>pamnet_nopulse_gn_s3</td><td>0.307</td><td>15</td><td>0.03</td></tr><tr><td>pamnet_short</td><td>1.575</td><td>8</td><td>2.36</td></tr>
 </tbody></table>
 
-<h2>十、独立复算</h2>
+<h2>十一、独立复算</h2>
 <p><code>verify_pamnet.py</code> <b>不复用训练脚本的任何实现</b>：自己读 .mat、
 自己 <code>resample_poly(1,4)</code>、自己实现 SNR / SI-SDR / 逐帧降噪增益，
 再与训练脚本产出的逐样本 CSV 对比。唯一共用的是模型定义本身
@@ -417,7 +572,7 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 <p>结果：<b>均值逐位吻合</b>；逐样本最大差 2.4e−3 dB，来自 STFT/ISTFT 在 float32 下的
 舍入放大。150 个样本<b>无一变差</b>（最差 +4.53 dB）。</p>
 
-<h2>十一、局限</h2>
+<h2>十二、局限</h2>
 <ul>
 <li><b>仍然是仿真数据。</b>α 稳定背景与突发干扰都是合成的，α 只取 1.5，
 突发幅度/时长范围是设定的。导师已说明会提供实测信号，届时需重新验证。</li>
@@ -442,9 +597,25 @@ R0 → R5 共提升 干净帧 +4.13 / 干扰帧 +2.29 / 干扰最差 +3.59 dB。
 而高斯噪声下同样的降采样带来 +6.19 dB 输入 SNR 增益。</li>
 <li><b>两个前端处理需要交代</b>：样本中位有效长度 6,031/8,000（约 24.6% 零填充）；
 降采样 4 倍把输入 SNR 从 0 dB 抬到 6.19 dB（高斯版）。</li>
+<li><b>（第八节新增）α 扫描的 SNR 定义混杂已量化，但未做"等有效功率 SNR"的重扫。</b>
+本轮发现分位数匹配让 α 与有效噪声功率同时变化（−16.4 vs +10.8 dB）。
+正确的做法是<b>固定有效功率 SNR 再扫 α</b>，本轮未做。因此第八节 α 轴上的
+"背景越脉冲化收益越小"应读作<b>强度 + 形状的联合效应</b>。</li>
+<li><b>（第八节新增）域内重训只在 rate=10 一个条件上做</b>，且尚未完成。
+本节的零样本矩阵只能回答"分布偏移下的稳健性"，不能区分
+"分布偏移造成的退化"与"该条件下方法本身的优劣"。α=1.2 的域内重训同样缺失。</li>
+<li><b>（第八节新增）"能识别 ≠ 能提升性能"的因果链未闭环。</b>
+我们证明了判别能力（AUC 0.93~0.96）跨条件几乎不变、而收益跨条件变化 0.2~1.7 dB，
+也证明了收益与时频重叠率负相关；但<b>没有</b>做"人为制造重叠"的干预实验，
+因此"重叠→收益下降"仍是相关而非因果。</li>
+<li><b>（第八节新增）含时域分支的模型，逐样本指标无法从 checkpoint 逐位复现。</b>
+最大差 ≤0.13 dB、均值 ≤0.003 dB（纯频域模型仅 5e-5 dB），
+原因是时域通路对 1e-7 量级浮点归约差异的放大。
+所有聚合指标复现误差 ≤0.001 dB，本研究结论基于聚合指标，不受影响；
+但任何以逐样本 CSV 为依据的复核会看到非零残差。</li>
 </ul>
 
-<h2>十二、复现命令</h2>
+<h2>十三、复现命令</h2>
 <pre># 1) 单元测试（8 项，必须全过）
 python code/analysis/test_pamnet.py
 # 2) 损失量级校准（确定 lambda2）
@@ -486,13 +657,34 @@ python code/analysis/paired_test_pamnet.py  # 样本级配对检验
 python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth \
     --tag pamnet_freq_pf --freq-refine 2.0 --pulse-freq 1
 python code/analysis/compare_baseline_pam.py
+
+# 8) 适用边界（敏感性）：5 个条件的数据集（单因素轮换，共同随机数）
+#   MATLAB（一次生成全部条件；--conds 可只跑部分）:
+#   gen_sensitivity([1 2 3 4 5])          % a12_r5 / a18_r5 / a20_r5 / a15_r25 / a15_r10
+#   % 基线条件直接用 D:/project/dataset_pam/alphastable；高斯对照用 dataset_pam/gauss
+
+# 9) 零样本跨条件评估（含逐样本逐种子结果）
+python code/analysis/eval_sensitivity.py --prep            # 预处理 + 噪声功率分解
+python code/analysis/eval_sensitivity.py --verify          # 口径校验：与存档 CSV 逐位比对
+python code/analysis/eval_sensitivity.py --nshard 6 --shard 0     # 6 路并行，支持断点续跑
+
+# 10) 统计分析与出图
+python code/analysis/analyze_sensitivity.py --split testA  # 表1~表5 + 汇总 JSON + 扁平 CSV
+python code/analysis/analyze_sensitivity.py --split testC
+python code/analysis/make_fig_sensitivity.py               # 图 Q / R / S / T
+python code/analysis/diagnose_pulse_sens.py --max 300      # 脉冲分支 AUC 跨条件
+
+# 11) 域内重训（区分"分布偏移"与"方法本身优劣"；后台跑）
+bash code/analysis/run_sens_train.sh            # a15_r10 上 R4/R5 × 3 种子
 </pre>
 
 <hr>
 <p style="font-size:12.5px;color:#6b7280">
 本报告由 <code>build_report_pamnet.py</code> 自动生成。数字来自 <code>figs_pamnet/</code> 下的
 summary_pamnet.json / seed_agg.json / pulse_diag.json / baseline_pam.json /
-paired_test.json / stability.json / ladder.json / chirp_band.json / chirp_band_paired.json。
+paired_test.json / stability.json / ladder.json / chirp_band.json / chirp_band_paired.json，
+以及 <code>sens_out/</code> 下的 sens_summary_testA.json / sens_summary_testC.json /
+pulse_diag_sens.json（适用边界实验）。
 </p>
 
 </div></body></html>
