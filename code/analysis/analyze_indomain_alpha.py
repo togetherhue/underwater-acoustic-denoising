@@ -151,14 +151,28 @@ def main():
         gap_zero = z - d_base          # 零样本相对 base
         gap_in = r["corrected"] - d_base   # 域内校正后相对 base
         print("    零样本相对 base：%+.3f dB；域内校正后相对 base：%+.3f dB" % (gap_zero, gap_in))
+        sig = ("-- **注意**：域内 Δ 的跨种子检验不显著（p=%.3f，sd=%.3f），"
+               "该残余量级很小，不能排除为 0；"
+               "两个 split 的差值方向是否一致要看 testC。")
+        print("    域内 Δ 跨种子检验：p = %.3f（sd %.3f，n=%d 种子）" % (r["p"], r["sd"], r["n"]))
         if abs(gap_in) < abs(gap_zero) * 0.5:
             print("    -> **主要是分布偏移**：域内重训后收益基本回到 base 水平。")
         elif abs(gap_in) > abs(gap_zero) * 0.8:
             print("    -> **主要是尾形本身**：即使域内重训，收益仍明显偏离 base。")
         else:
-            print("    -> **两者兼有**：分布偏移解释了约 %.0f%%，尾形解释了约 %.0f%%。"
+            print("    -> **两者兼有**：分布偏移解释了约 %.0f%%，尾形成分解释了约 %.0f%%。"
                   % (100 * (1 - abs(gap_in) / abs(gap_zero)) if abs(gap_zero) > 1e-9 else 0,
                      100 * abs(gap_in) / abs(gap_zero) if abs(gap_zero) > 1e-9 else 0))
+        sig = sig % (r["p"], r["sd"])
+        if r["p"] > 0.05:
+            # 不显著时不得下"主要是尾形"的强判断
+            print("       " + sig)
+            if abs(gap_in) > abs(gap_zero) * 0.8:
+                print("       **修正判定**：虽然域内校正后相对 base 的比例仍高，但域内 Δ 本身"
+                      "不显著，\n       **不能判定为'主要是尾形本身'** —— 更稳的表述是："
+                      "该端存在一个小量级残余差异，但无法与 0 区分。")
+        else:
+            print("       域内 Δ 跨种子检验显著（p=%.3f），残余尾形成分可认为非零。" % r["p"])
         print()
 
     out = dict(split=A.split, device_correction=dev, d_base=d_base, conds=res)
