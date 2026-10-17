@@ -56,6 +56,30 @@ def main():
         checks.append(("R5−最好盲 中位",
                        "%.2f" % sorted(r["gap"] for r in BL["rows"])[len(BL["rows"]) // 2],
                        None))
+    # ---- 域内重训（8.6 / 8.7） ----
+    IND = load("indomain_r10_testA.json")
+    if IND and "indomain" in IND:
+        # R4_in / R5_in 可能是逐种子列表，报告用的是跨种子均值
+        def _mean(xs):
+            return (sum(xs) / len(xs)) if isinstance(xs, list) else float(xs)
+        r4 = _mean(IND["indomain"]["R4_in"]["frmgain_imp"]
+                   if not isinstance(IND["indomain"]["R4_in"], list)
+                   else [x["frmgain_imp"] for x in IND["indomain"]["R4_in"]])
+        r5 = _mean(IND["indomain"]["R5_in"]["frmgain_imp"]
+                   if not isinstance(IND["indomain"]["R5_in"], list)
+                   else [x["frmgain_imp"] for x in IND["indomain"]["R5_in"]])
+        dv = r5 - r4
+        checks.append(("域内重训(r10) Δ", "%+.3f" % dv, dv))
+        checks.append(("域内重训(r10) R5", "%.2f" % r5, r5))
+    DA = load("indomain_alpha_testA.json")
+    if DA:
+        for k, nm in (("a12", "α=1.2"), ("a18", "α=1.8")):
+            v = DA["conds"][k]
+            checks.append(("域内重训(%s) 零样本Δ" % nm,
+                           "%+.3f" % (v["zero_r5"] - v["zero_r4"]), None))
+            checks.append(("域内重训(%s) 校正Δ" % nm,
+                           "%+.3f" % v["corrected"], v["corrected"]))
+            checks.append(("域内重训(%s) RC4" % nm, "%.2f" % v["r4"], v["r4"]))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
