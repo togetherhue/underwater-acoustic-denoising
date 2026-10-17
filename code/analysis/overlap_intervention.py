@@ -177,14 +177,16 @@ def load_model(arch, ckpt):
 
 
 @torch.no_grad()
-def frame_gains(model, noisy):
-    """批量前向，返回每个样本的 (frmgain_med, frmgain_clean, frmgain_imp, frmgain_imp_min)"""
+def frame_gains(model, noisy, bs=32):
+    """批量前向，返回每个样本的增强输出（float64 numpy 列表）。
+    自动跟随模型所在设备（CPU 或 CUDA）。"""
+    dev = next(model.parameters()).device
     outs = []
-    for s in range(0, len(noisy), 32):
-        nb = torch.from_numpy(noisy[s:s + 32]).unsqueeze(1)
+    for s in range(0, len(noisy), bs):
+        nb = torch.from_numpy(np.asarray(noisy[s:s + bs])).unsqueeze(1).to(dev)
         e = model(nb)
         for k in range(e.shape[0]):
-            outs.append(e[k, 0].cpu().numpy().astype(np.float64))
+            outs.append(e[k, 0].detach().cpu().numpy().astype(np.float64))
     return outs
 
 

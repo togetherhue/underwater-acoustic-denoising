@@ -96,6 +96,71 @@ def _stats_1d(est, ref, noisy, frame, imp_mask):
     return out
 
 
+def _stats_batch(est, ref, noisy, frame, imp_mask=None):
+    """_stats_1d 的批量化版本：est/ref/noisy 为 [B, L] 的 float64 数组。
+
+    能量/功率这类 O(L) 的运算是向量化到整个 batch 上做的（这是原实现的瓶颈）；
+    而 nanmedian/nanmin 需要逐样本在不同帧子集上取，保持逐样本循环
+    —— 那部分只有 ~62 个元素的归约，开销可忽略。
+
+    与逐样本调用 _stats_1d **逐位等价**（已在 base testA 全量 1080 样本上验证，
+    见 verify_batch_metrics.py）。
+    """
+    B, L = ref.shape
+    nf = L // frame
+    if nf < 1:
+        raise ValueError("信号长度 %d 不足一帧 %d" % (L, frame))
+
+    def fr(x):
+        return x[:, :nf * frame].reshape(B, nf, frame)
+
+    s = fr(ref)
+    ps = (s ** 2).sum(2)                                   # [B, nf]
+    pn_in = ((fr(noisy) - s) ** 2).sum(2)
+    pn_out = ((fr(est) - s) ** 2).sum(2)
+
+    valid = ps > ps.max(axis=1, keepdims=True) * MIN_ENERGY_FRAC
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        snr = np.where(valid, 10 * np.log10(ps / (pn_out + 1e-12)), np.nan)
+        gain = np.where(valid, 10 * np.log10((pn_in + 1e-12) / (pn_out + 1e-12)), np.nan)
+
+    if imp_mask is not None:
+        mfr = fr(np.asarray(imp_mask, dtype=np.float64)).max(2) > 0   # [B, nf]
+    else:
+        mfr = None
+
+    keys = ["n_valid", "nf", "fmsnr_med", "frmgain_med", "fmsnr_frac_bad",
+            "frac_imp", "fmsnr_imp", "fmsnr_clean", "frmgain_imp",
+            "frmgain_imp_min", "frmgain_clean"]
+    out = {k: np.full(B, np.nan) for k in keys}
+
+    for i in range(B):
+        v = valid[i]
+        g, sr = gain[i], snr[i]
+        out["n_valid"][i] = v.sum()
+        out["nf"][i] = nf
+        out["fmsnr_med"][i] = np.nanmedian(sr[v])
+        out["frmgain_med"][i] = np.nanmedian(g[v])
+        out["fmsnr_frac_bad"][i] = np.nanmean(sr[v] < 0.0)
+        if mfr is not None and mfr[i].any():
+            m = mfr[i]
+            mc, mq = v & m, v & (~m)
+            out["frac_imp"][i] = m.sum() / max(v.sum(), 1)
+            if mc.any():
+                out["fmsnr_imp"][i] = np.nanmedian(sr[mc])
+                out["frmgain_imp"][i] = np.nanmedian(g[mc])
+                out["frmgain_imp_min"][i] = np.nanmin(g[mc])
+            if mq.any():
+                out["fmsnr_clean"][i] = np.nanmedian(sr[mq])
+                out["frmgain_clean"][i] = np.nanmedian(g[mq])
+        else:
+            out["frac_imp"][i] = 0.0
+            out["fmsnr_clean"][i] = out["fmsnr_med"][i]
+            out["frmgain_clean"][i] = out["frmgain_med"][i]
+    return out
+
+
 # ============================ 批量入口 ============================
 def evaluate(est, ref, noisy, frame=FRAME, imp_mask=None):
     """est/ref/noisy: [B, L] torch 张量；imp_mask: [B, L] torch 张量或 None

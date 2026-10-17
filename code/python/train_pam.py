@@ -38,13 +38,32 @@ import pam_metrics as PM       # noqa: E402
 
 
 class PAMDataset(Dataset):
-    """带干扰掩码的数据集。放在模块顶层以保证多进程 spawn 可 pickle。"""
+    """带干扰掩码的数据集。放在模块顶层以保证多进程 spawn 可 pickle。
+
+    优先使用同目录上一级的 `_npy/<split>_*.npy` 缓存（由 make_npy_cache.py 生成）：
+    缓存与 .mat 直接解析【逐位一致】（已校验差 0.000e+00），但读取快一个数量级，
+    且用 mmap 避免多 worker 各拷一份。没有缓存时自动回退到 .mat。
+    """
 
     def __init__(self, folder, seg_len, ds):
         self.files = sorted(glob.glob(os.path.join(folder, "*.mat")))
         if not self.files:
             raise FileNotFoundError(folder + " 里没有 .mat 文件")
         self.seg_len, self.ds = seg_len, ds
+        # ---- .npy 缓存探测 ----
+        self.npy = None
+        split = os.path.basename(os.path.normpath(folder))
+        cache_dir = os.path.join(os.path.dirname(os.path.normpath(folder)), "_npy")
+        cand = [os.path.join(cache_dir, "%s_%s.npy" % (split, t))
+                for t in ("n", "c", "m")]
+        if all(os.path.exists(p) for p in cand):
+            try:
+                arrs = [np.load(p, mmap_mode="r") for p in cand]
+                if all(a.shape[0] == len(self.files) and a.shape[1] == seg_len
+                       for a in arrs):
+                    self.npy = arrs
+            except Exception:
+                self.npy = None
 
     def __len__(self):
         return len(self.files)
@@ -54,6 +73,11 @@ class PAMDataset(Dataset):
         return x[:L] if len(x) >= L else np.pad(x, (0, L - len(x)))
 
     def __getitem__(self, i):
+        if self.npy is not None:
+            n_arr, c_arr, m_arr = self.npy
+            return (torch.from_numpy(np.array(n_arr[i], dtype=np.float32)),
+                    torch.from_numpy(np.array(c_arr[i], dtype=np.float32)),
+                    torch.from_numpy(np.array(m_arr[i], dtype=np.float32)))
         m = sio.loadmat(self.files[i])
         n = np.asarray(m["noisy_signal"]).squeeze().astype(np.float32)
         c = np.asarray(m["clean_signal"]).squeeze().astype(np.float32)
