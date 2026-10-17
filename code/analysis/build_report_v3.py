@@ -13,11 +13,10 @@ sweep, full_m, bp_gain = SW["sweep"], SW["full"], SW["bandpass"]
 
 PC = {}
 try:
-    spec = importlib.util.spec_from_file_location("v3", r"C:\Users\32213\PycharmProjects\project1\大创_v3.py")
-    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    import v3_model as V3
     for tag, (ut, uf, f) in {"full": (True, True, 1.0), "timeonly": (True, False, 1.0),
                              "freqonly": (False, True, 1.0)}.items():
-        PC[tag] = m.DenoiseNet(512, 128, 64, ut, uf, f).n_params()
+        PC[tag] = V3.DenoiseNet(512, 128, 64, ut, uf, f).n_params()
 except Exception as e:
     print("参数量计算失败:", e)
     PC = {"full": 57657, "timeonly": 55745, "freqonly": 1910}
@@ -337,7 +336,7 @@ hr{border:none;border-top:1px solid #e3e6ea;margin:36px 0}
 <h2>十、怎么复现</h2>
 <div class="card">
 <p>生成数据：<code>make_dataset_v3.m</code> → <code>D:/project/dataset_v3/</code>（10,600 样本，3 分 49 秒）</p>
-<p>训练与评测：<code>C:\\Users\\32213\\PycharmProjects\\project1\\大创_v3.py</code></p>
+<p>训练与评测：<code>code/python/大创_v3.py</code></p>
 <ul>
 <li><code>python 大创_v3.py --tag full</code> — 完整模型（57,657 参数）</li>
 <li><code>python 大创_v3.py --tag freqonly --time 0</code> — 仅频域（1,910）</li>

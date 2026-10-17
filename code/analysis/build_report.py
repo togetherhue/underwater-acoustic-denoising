@@ -313,7 +313,7 @@ __FIG3__
 
 <h2>十、怎么复现</h2>
 <div class="card">
-<p>训练脚本：<code>C:\\Users\\32213\\PycharmProjects\\project1\\大创_v2.py</code></p>
+<p>训练脚本：<code>code/python/大创_v2.py</code></p>
 <p>输出：<code>D:/project/denoise_model_v2.pth</code>（模型）、
 <code>D:/project/output_v2/train_log.txt</code>（逐轮指标）、
 <code>D:/project/output_v2/test_results.csv</code>（1500 行逐样本结果）</p>

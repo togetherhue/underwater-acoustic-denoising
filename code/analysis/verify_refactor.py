@@ -6,16 +6,22 @@
  2. 加载后用 freqonly 模型重算 testA，看能否复现训练时报告的 +13.9848 dB
  3. 打印各 fch 的参数量，确认扫描档位设计合理
 """
-import os, sys, glob
+import os, sys, sys, glob
 import numpy as np
 import scipy.io as sio
 from scipy.signal import resample_poly
 import torch
 import importlib.util
 
-spec = importlib.util.spec_from_file_location("v3", r"C:\Users\32213\PycharmProjects\project1\大创_v3.py")
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-CFG = m.CFG
+# ---- 路径解析：兼容仓库布局（库模块在 ../python）与本地开发布局 ----
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_CANDS = [os.path.normpath(os.path.join(_HERE, "..", "python")),
+          r"C:\Users\32213\PycharmProjects\project1"]
+for _p in [_HERE] + [c for c in _CANDS if os.path.isdir(c)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import v3_model as V3
+CFG = V3.CFG
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 OUT = r"D:/project/output_v3"
 
@@ -29,7 +35,7 @@ for fch, ut, uf, nm in [(1.0, True, True, "full"),
                         (0.5, False, True, "sweep 0.5x"),
                         (2.0, False, True, "sweep 2x"),
                         (4.0, False, True, "sweep 4x")]:
-    net = m.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], ut, uf, fch)
+    net = V3.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], ut, uf, fch)
     w = getattr(net, "freq", None)
     print("%-8s %-26s %10s   %s" % (fch, str(getattr(w, "widths", "-")),
                                     "{:,}".format(net.n_params()), nm))
@@ -43,7 +49,7 @@ for tag, ut, uf in [("full", True, True), ("timeonly", True, False), ("freqonly"
     p = os.path.join(OUT, "model_%s.pth" % tag)
     if not os.path.exists(p):
         print("  %-10s  (无 checkpoint)" % tag); continue
-    net = m.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], ut, uf, 1.0)
+    net = V3.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], ut, uf, 1.0)
     try:
         sd = torch.load(p, map_location="cpu")
         r = net.load_state_dict(sd, strict=True)
@@ -57,7 +63,7 @@ print()
 print("=" * 78)
 print("③ 功能复现：用 freqonly 重算 testA，对比训练时报告的 +13.9848 dB")
 print("=" * 78)
-net = m.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], False, True, 1.0)
+net = V3.DenoiseNet(CFG["n_fft"], CFG["hop_length"], CFG["hidden"], False, True, 1.0)
 net.load_state_dict(torch.load(os.path.join(OUT, "model_freqonly.pth"), map_location="cpu"))
 net = net.to(DEV).eval()
 

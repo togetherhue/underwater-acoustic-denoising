@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """信道频率选择性 vs 模型增益 + 生成报告用图"""
-import os, glob
+import os, sys, glob
 import numpy as np
 import scipy.io as sio
 from scipy.signal import resample_poly, butter, filtfilt, stft, istft, welch
@@ -11,8 +11,14 @@ plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 
 import torch, importlib.util
-spec = importlib.util.spec_from_file_location("dc", r"C:\Users\32213\PycharmProjects\project1\大创_v2.py")
-dc = importlib.util.module_from_spec(spec); spec.loader.exec_module(dc)
+# ---- 路径解析：兼容仓库布局（库模块在 ../python）与本地开发布局 ----
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_CANDS = [os.path.normpath(os.path.join(_HERE, "..", "python")),
+          r"C:\Users\32213\PycharmProjects\project1"]
+for _p in [_HERE] + [c for c in _CANDS if os.path.isdir(c)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+import 大创_v2 as dc
 CFG = dc.CFG; FS = CFG["fs_native"]//CFG["downsample"]; L = CFG["seg_len"]
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 OUT = r"E:/workbuddy/store/2026-10-12-22-50-08/figs"
