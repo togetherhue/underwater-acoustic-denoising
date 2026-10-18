@@ -56,15 +56,32 @@ def build(arch, ckpt):
 
 
 @torch.no_grad()
-def gains_on_scale(model, N, C, M, s, bs=48):
-    """把输入整体乘 s（SNR 不变），返回逐样本的 frmgain_imp 数组"""
+def gains_on_scale(model, N, C, M, s, rms_norm=False, bs=48):
+    """把输入整体乘 s（SNR 不变），返回逐样本的 frmgain_imp 数组
+
+    rms_norm=True 用于归一化训练的 checkpoint：前向按 x/rms(x·s)，
+    输出乘回 rms(x·s)。注意这是恒等式 x·s/rms(x·s) = x/rms(x)，
+    即归一化模型在正确前向下【严格】尺度不变 —— 缩放被完全消掉。
+    """
     out = []
     for i in range(0, len(N), bs):
-        nb = torch.from_numpy((N[i:i + bs] * s).astype(np.float32)).unsqueeze(1).to(V3.DEVICE)
-        e = model(nb).squeeze(1).cpu().numpy().astype(np.float64)
+        raw = (N[i:i + bs] * s).astype(np.float32)
+        if rms_norm:
+            r = np.sqrt((raw.astype(np.float64) ** 2).mean(axis=1)) + 1e-12
+            nb = (raw / r[:, None]).astype(np.float32)
+        else:
+            nb = raw
+        e = model(torch.from_numpy(nb).unsqueeze(1).to(V3.DEVICE)
+                  ).squeeze(1).cpu().numpy().astype(np.float64)
+        if rms_norm:
+            e = e * r[:, None]           # 反归一化回 raw 尺度
         for k in range(e.shape[0]):
             j = i + k
-            st = PM._stats_1d(e[k], C[j].astype(np.float64), (N[j] * s).astype(np.float64),
+            # 三个量必须同一尺度：est 已反归一化到 raw 尺度（= N·s 尺度），
+            # 因此 ref 与 noisy 也都要乘 s。此前 ref 漏乘 s 导致 est/ref/noisy
+            # 尺度错位，指标整体错误（这正是"归一化模型仍敏感"假象的来源）。
+            st = PM._stats_1d(e[k], (C[j] * s).astype(np.float64),
+                              (N[j] * s).astype(np.float64),
                               PM.FRAME, M[j].astype(np.float64))
             out.append(st["frmgain_imp"])
     return np.array(out)
@@ -106,7 +123,7 @@ def main():
         print("  %6s %14s %12s %12s" % ("尺度 s", "干扰帧增益(dB)", "相对 s=1", "有效SNR(dB)"))
         row = {}
         for s in SCALES:
-            g = gains_on_scale(model, N, C, M, s)
+            g = gains_on_scale(model, N, C, M, s, rms_norm=is_norm)
             fin = g[np.isfinite(g)]
             v = float(np.nanmean(fin))
             row[s] = v

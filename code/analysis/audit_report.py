@@ -9,6 +9,7 @@
   C. 结构完整性：章节编号连续、图/表占位符无残留、交叉引用存在
 """
 import io, os, re, json, glob
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HTML = os.path.join(HERE, "降噪模型_脉冲感知网络阶段1报告.html")
@@ -77,7 +78,7 @@ def main():
         ks = list(SI["res"].keys())
         checks.append(("老 R5 跨尺度极差", "%.2f" % SI["res"][ks[0]]["range_db"],
                        SI["res"][ks[0]]["range_db"]))
-        checks.append(("老 R5 s=0.25 增益", "%.2f" % SI["res"][ks[0]]["gains"].get("0.25", 0),
+        checks.append(("老 R5 s=0.25 增益", "%.3f" % SI["res"][ks[0]]["gains"].get("0.25", 0),
                        SI["res"][ks[0]]["gains"].get("0.25", 0)))
         if len(SI["res"]) > 1:
             checks.append(("新 R5 跨尺度极差", "%.2f" % SI["res"][ks[-1]]["range_db"],
