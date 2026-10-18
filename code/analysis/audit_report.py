@@ -173,6 +173,66 @@ def main():
         # 位置价值跨条件极差（正文的 2.94）
         pv = [v["position"] for v in CC["conds"].values()]
         checks.append(("位置价值跨条件极差", "%.2f" % (max(pv) - min(pv)), max(pv) - min(pv)))
+
+        # ---- 8.16.6 rate 轴 ----
+        RC = ["a15_r25", "base", "a15_r10"]
+        if all(c in CC["conds"] for c in RC):
+            for c, lab in zip(RC, ("r2.5", "base", "r10")):
+                d = CC["conds"][c]
+                r_ = d["position"] / abs(d["d_zero"])
+                checks.append(("8.16.6 %s 净Δ" % lab, "%+.3f" % d["d_identity"], d["d_identity"]))
+                checks.append(("8.16.6 %s 价值/惩罚" % lab, "%.2f" % r_, r_))
+            # 占空比
+            for c, lab in zip(RC, ("2.22", "4.45", "8.59")):
+                dv = CC["conds"][c]["duty"]
+                checks.append(("8.16.6 %s 占空比" % lab, "%.2f%%" % dv, dv))
+            pdg = CC.get("p_diag") or {}
+            if all(c in pdg for c in RC):
+                checks.append(("8.16.6 p均值 r2.5", "%.4f" % pdg["a15_r25"]["p_mean"],
+                               pdg["a15_r25"]["p_mean"]))
+                checks.append(("8.16.6 p均值 r10", "%.4f" % pdg["a15_r10"]["p_mean"],
+                               pdg["a15_r10"]["p_mean"]))
+                checks.append(("8.16.6 AUC r2.5", "%.3f" % pdg["a15_r25"]["auc_mean"],
+                               pdg["a15_r25"]["auc_mean"]))
+                # AUC 极差（正文 0.027）
+                au = [pdg[c]["auc_mean"] for c in RC]
+                checks.append(("8.16.6 rate轴 AUC 极差", "%.3f" % (max(au) - min(au)),
+                               max(au) - min(au)))
+
+        # ---- 8.16.8 超额倍数区间 ----
+        ratios = [v["position"] / abs(v["d_zero"]) for v in CC["conds"].values()]
+        checks.append(("8.16.8 超额倍数下限", "%.2f" % min(ratios), min(ratios)))
+        checks.append(("8.16.8 超额倍数上限", "%.2f" % max(ratios), max(ratios)))
+        import statistics as _st
+        nv = [v["d_identity"] for v in CC["conds"].values()]
+        pvv = [v["position"] for v in CC["conds"].values()]
+        cvv = [abs(v["d_zero"]) for v in CC["conds"].values()]
+        checks.append(("8.16.8 净Δ sd", "%.3f" % _st.stdev(nv), _st.stdev(nv)))
+        checks.append(("8.16.8 位置价值 sd", "%.3f" % _st.stdev(pvv), _st.stdev(pvv)))
+        checks.append(("8.16.8 惩罚 sd", "%.3f" % _st.stdev(cvv), _st.stdev(cvv)))
+
+    # ---- 8.16.7 交叉验证 ----
+    SS = load("sens_summary_testA.json")
+    if CC and SS and CC.get("conds") and SS.get("table"):
+        import statistics as _st2
+        maxdev = 0.0
+        for c, v in CC["conds"].items():
+            if c not in SS["table"]:
+                continue
+            row = SS["table"][c]
+            for key, ov in (("R4_freqrefine_nopulse", v["R4"]),
+                            ("R5_freqrefine_pulse", v["R5_identity"])):
+                if key in row and row[key].get("per_seed_imp"):
+                    maxdev = max(maxdev, abs(_st2.mean(row[key]["per_seed_imp"][:3]) - ov))
+        checks.append(("8.16.7 逐位吻合最大偏差", "%.4f" % maxdev, maxdev))
+        # r10 的 3 vs 5 种子偏差
+        if "a15_r10" in SS["table"] and "a15_r10" in CC["conds"]:
+            row = SS["table"]["a15_r10"]
+            d5 = [b - a for a, b in zip(row["R4_freqrefine_nopulse"]["per_seed_imp"],
+                                        row["R5_freqrefine_pulse"]["per_seed_imp"])]
+            df = CC["conds"]["a15_r10"]["d_identity"] - _st2.mean(d5)
+            checks.append(("8.16.7 r10 种子偏差", "%+.3f" % df, df))
+            checks.append(("8.16.7 r10 种子sd", "%.3f" % _st2.stdev(d5), _st2.stdev(d5)))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
