@@ -159,6 +159,20 @@ def main():
                        PMO["summary"]["headroom_mean"]))
         checks.append(("oracle Δ", "%+.3f" % PMO["summary"]["d_oracle_mean"],
                        PMO["summary"]["d_oracle_mean"]))
+    # ---- 8.16 跨条件分解 ----
+    CC = load("pulse_mask_crosscond.json")
+    if CC and CC.get("conds"):
+        cbd = CC["conds"]["base"]
+        checks.append(("跨条件 base Δ_id", "%+.3f" % cbd["d_identity"], cbd["d_identity"]))
+        checks.append(("跨条件 base 位置价值", "%+.3f" % cbd["position"], cbd["position"]))
+        checks.append(("跨条件 base 无信息基线", "%+.3f" % cbd["d_zero"], cbd["d_zero"]))
+        a12c = CC["conds"].get("a12_r5", {})
+        if a12c:
+            checks.append(("跨条件 α=1.2 oracle余量", "%+.3f" % a12c["oracle_gain"],
+                           a12c["oracle_gain"]))
+        # 位置价值跨条件极差（正文的 2.94）
+        pv = [v["position"] for v in CC["conds"].values()]
+        checks.append(("位置价值跨条件极差", "%.2f" % (max(pv) - min(pv)), max(pv) - min(pv)))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
