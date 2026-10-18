@@ -131,6 +131,34 @@ def main():
             # 报告在"符号相反"分支里会打印 R4 跨种子极差，必须与 JSON 一致
             rr = max(A20J["per_seed_r4"]) - min(A20J["per_seed_r4"])
             checks.append(("α=2.0 R4 跨种子极差", "%.2f" % rr, rr))
+    # ---- 8.15 脉冲掩码干预 ----
+    PMI = load("pulse_mask_intervention.json")
+    PMD = load("pulse_mask_dose.json")
+    PMO = load("pulse_mask_oracle.json")
+    if PMI:
+        checks.append(("干预 identity Δ", "%+.3f" % PMI["summary"]["identity"]["mean"],
+                       PMI["summary"]["identity"]["mean"]))
+        for m in ("shuffle", "zero", "noise"):
+            # 正文里"损失"写成正值（"损失 3.12 dB"），所以核对时取绝对值
+            v = abs(PMI["rel_identity"][m]["mean"])
+            checks.append(("干预 %s 损失" % m, "%.2f" % v, v))
+        pds = list(PMI["p_diag"].values())
+        auc = float(np.mean([x["auc_mean"] for x in pds]))
+        checks.append(("p 的 AUC", "%.3f" % auc, auc))
+        fbid = float(np.mean([PMI["r5"][s]["identity"]["frac_better_r4"] for s in PMI["r5"]]))
+        checks.append(("identity 优于 R4 比例", "%.1f%%" % (100 * fbid), None))
+    if PMD:
+        checks.append(("剂量响应半衰点", "%.0f" % PMD["k_half"], PMD["k_half"]))
+        d125 = PMD["summary"][str(PMD["ks"][1])]["d_mean"]
+        checks.append(("剂量 k=125 的 Δ", "%+.3f" % d125, d125))
+        bl = PMD["burst"]["burst_len_mean"]
+        checks.append(("平均突发时长 ms", "%.1f" % (1000 * bl / PMD["fs"]),
+                       1000 * bl / PMD["fs"]))
+    if PMO and PMO.get("summary"):
+        checks.append(("oracle 余量", "%+.3f" % PMO["summary"]["headroom_mean"],
+                       PMO["summary"]["headroom_mean"]))
+        checks.append(("oracle Δ", "%+.3f" % PMO["summary"]["d_oracle_mean"],
+                       PMO["summary"]["d_oracle_mean"]))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
