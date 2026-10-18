@@ -90,10 +90,10 @@ def _load(path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
-    ap.add_argument("--data", default=r"D:/project/dataset_pam/alphastable")
+    ap.add_argument("--data", default=r"E:/project/data/dataset_pam/alphastable")
     ap.add_argument("--split", default="testA")
     ap.add_argument("--tag", required=True, help="训练脚本用的 tag，用于定位 result_*.csv")
-    ap.add_argument("--outdir", default=r"D:/project/output_pamnet")
+    ap.add_argument("--outdir", default=r"E:/project/data/output_pamnet")
     ap.add_argument("--c", type=int, default=24)
     ap.add_argument("--pulse", type=int, default=1)
     ap.add_argument("--short", type=int, default=1)

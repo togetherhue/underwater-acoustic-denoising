@@ -15,7 +15,7 @@
 import os, sys, csv
 import numpy as np
 
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 OUT0 = r"D:/project/output_pam"
 COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out", "fmsnr_med_in", "fmsnr_med_out",
         "frmgain_med", "frmgain_clean", "frmgain_imp", "frmgain_imp_min",

@@ -31,7 +31,7 @@ import pamnet as PN            # noqa: E402
 
 WORK = r"E:/workbuddy/store/2026-10-12-22-50-08"
 OUTD = os.path.join(WORK, "sens_out")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 CONDS = ["base", "a12_r5", "a18_r5", "a20_r5", "a15_r25", "a15_r10", "gauss"]
 
 # 含脉冲感知分支的两个配置（只有它们才有 p_n）

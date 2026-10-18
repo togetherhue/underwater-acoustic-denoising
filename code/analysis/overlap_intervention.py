@@ -47,7 +47,7 @@ import pam_metrics as PM          # noqa: E402
 
 WORK = r"E:/workbuddy/store/2026-10-12-22-50-08"
 OUTD = os.path.join(WORK, "sens_out")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 SEG, DS, FS = 8000, 4, 6000
 
 # 合成突发参数：与 gen_burst.m / make_dataset_pam.m 的 cfg.burst 完全一致
@@ -199,7 +199,7 @@ def main():
     torch.set_num_threads(int(os.environ.get("OMP_NUM_THREADS", "4")))
 
     # ---- 1. 取真实信号 s 与真实背景噪声 v ----
-    files = sorted(glob.glob(os.path.join(r"D:/project/dataset_pam/alphastable",
+    files = sorted(glob.glob(os.path.join(r"E:/project/data/dataset_pam/alphastable",
                                           "testA", "*.mat")))
     k = min(A.nmax, len(files))
     S, V, MASK = [], [], []

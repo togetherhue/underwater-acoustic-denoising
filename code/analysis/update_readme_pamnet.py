@@ -132,7 +132,7 @@ new = """7. **脉冲噪声阶段1：PAM-Net**
    ```bash
    python code/analysis/test_pamnet.py         # 单元测试（8 项，必须全过）
    python code/analysis/calibrate_loss.py      # 确定 λ2
-   D=D:/project/dataset_pam/alphastable
+   D=E:/project/data/dataset_pam/alphastable
    # 消融（每项只改一个开关；全部串行）
    python code/python/train_pamnet.py --tag pamnet             --data $D --epochs 15
    python code/python/train_pamnet.py --tag pamnet_nopulse     --data $D --epochs 15 --pulse 0
@@ -146,9 +146,9 @@ new = """7. **脉冲噪声阶段1：PAM-Net**
    python code/python/train_pamnet.py --tag pamnet_l2big       --data $D --epochs 15 --lam-spec 0.5
    python code/analysis/analyze_pamnet.py
    python code/analysis/make_fig_pamnet_pulse.py \\
-       --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth --freq-refine 2.0 --pulse-freq 1
+       --ckpt E:/project/data/output_pamnet/model_pamnet_freq_pf.pth --freq-refine 2.0 --pulse-freq 1
    python code/analysis/paired_test_pamnet.py
-   python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth \\
+   python code/analysis/verify_pamnet.py --ckpt E:/project/data/output_pamnet/model_pamnet_freq_pf.pth \\
        --tag pamnet_freq_pf --freq-refine 2.0 --pulse-freq 1
    python code/analysis/compare_baseline_pam.py
    ```

@@ -46,7 +46,7 @@ def main():
     mask = z["testA_m"][:NMAX].astype(np.float64)
 
     # 取真实背景噪声 v（用于方案 B 的"噪声段"）
-    files = sorted(glob.glob(r"D:/project/dataset_pam/alphastable/testA/*.mat"))[:NMAX]
+    files = sorted(glob.glob(r"E:/project/data/dataset_pam/alphastable/testA/*.mat"))[:NMAX]
     V = []
     for f in files:
         m = sio.loadmat(f)

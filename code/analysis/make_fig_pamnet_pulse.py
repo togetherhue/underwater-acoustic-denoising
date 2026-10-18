@@ -69,7 +69,7 @@ def auc_rank(score, label):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ckpt", required=True)
-    ap.add_argument("--data", default=r"D:/project/dataset_pam/alphastable")
+    ap.add_argument("--data", default=r"E:/project/data/dataset_pam/alphastable")
     ap.add_argument("--split", default="testA")
     ap.add_argument("--c", type=int, default=24)
     ap.add_argument("--norm", default="bn", choices=["bn", "gn", "in"])

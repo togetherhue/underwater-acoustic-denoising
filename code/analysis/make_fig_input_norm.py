@@ -14,7 +14,7 @@ from matplotlib import font_manager
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTD = os.path.join(HERE, "sens_out")
 FIGD = os.path.join(HERE, "figs_pamnet")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 os.makedirs(FIGD, exist_ok=True)
 
 for cand in ("Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "DejaVu Sans"):

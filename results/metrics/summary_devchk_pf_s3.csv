@@ -1,0 +1,3 @@
+tag,testset,n,params,c,norm,use_short,use_long,use_gate,use_pulse,freq_refine,pulse_freq,loss,delta,lam_imp,lam_spec,select,epochs,seed,input_norm,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+devchk_pf_s3,testA,1080,14858,24,gn,1,1,1,1,2.0,1,huber,0.2,1.0,0.05,fg,15,3,0,-7.9633,17.8616,-8.0076,17.7710,-4.6104,14.3104,19.1940,18.3400,27.4205,17.2599,0.1751,0.1560
+devchk_pf_s3,testC,240,14858,24,gn,1,1,1,1,2.0,1,huber,0.2,1.0,0.05,fg,15,3,0,-8.2654,15.9860,-8.3100,15.8565,-4.9114,13.2060,17.9952,17.1717,25.8561,15.3518,0.1356,0.1551

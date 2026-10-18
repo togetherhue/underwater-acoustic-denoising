@@ -30,7 +30,7 @@ for _p in [_HERE] + [c for c in _CANDS if os.path.isdir(c)]:
         sys.path.insert(0, _p)
 import pam_metrics as PM       # noqa: E402
 
-DATA = r"D:/project/dataset_pam/alphastable"
+DATA = r"E:/project/data/dataset_pam/alphastable"
 SEG, DS, FS = 8000, 4, 6000
 N = 200
 

@@ -47,7 +47,7 @@ def load(f):
     return n.astype(np.float32), c.astype(np.float32)
 
 
-files = sorted(glob.glob(r"D:/project/dataset_pam/alphastable/testA/*.mat"))[:N_SAMPLE]
+files = sorted(glob.glob(r"E:/project/data/dataset_pam/alphastable/testA/*.mat"))[:N_SAMPLE]
 N = np.stack([load(f)[0] for f in files])
 C = np.stack([load(f)[1] for f in files])
 X = torch.from_numpy(N).unsqueeze(1)

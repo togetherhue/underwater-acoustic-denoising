@@ -2,7 +2,7 @@
 """
 阶段1（PAM-Net）结果汇总与出图
 ================================================================================
-读 D:/project/output_pamnet/ 下所有 summary_*.csv，与阶段0 基线对照，
+读 E:/project/data/output_pamnet/ 下所有 summary_*.csv，与阶段0 基线对照，
 输出表格 + 图 + JSON 汇总。
 
 阶段0 基线（同一份 α稳定+脉冲 数据集，同一套评估口径）：
@@ -16,7 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 PAM0 = r"D:/project/output_pam"
 HERE = r"E:/workbuddy/store/2026-10-12-22-50-08"
 FIG = os.path.join(HERE, "figs_pamnet")

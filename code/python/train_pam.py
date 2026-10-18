@@ -14,9 +14,9 @@
 "干净帧"与"干扰帧"两部分 —— 这是 PAM-Net 的核心关注点。
 
 用法：
-  python train_pam.py --tag pam_fch2 --data D:/project/dataset_pam/alphastable \
+  python train_pam.py --tag pam_fch2 --data E:/project/data/dataset_pam/alphastable \
       --epochs 15 --time 0 --fch 2.0
-  python train_pam.py --tag pam_full --data D:/project/dataset_pam/alphastable \
+  python train_pam.py --tag pam_full --data E:/project/data/dataset_pam/alphastable \
       --epochs 15 --time 1 --freq 1
 """
 import os, sys, time, argparse, csv, glob, shutil

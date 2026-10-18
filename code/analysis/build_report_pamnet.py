@@ -1707,10 +1707,10 @@ python code/analysis/test_pamnet.py
 # 2) 损失量级校准（确定 lambda2）
 python code/analysis/calibrate_loss.py
 # 3) 归一化诊断（解释为什么必须换 GroupNorm）
-python code/analysis/diagnose_bn.py --ckpt D:/project/output_pamnet/model_pamnet.pth
+python code/analysis/diagnose_bn.py --ckpt E:/project/data/output_pamnet/model_pamnet.pth
 
 # 4) 最终协议：GroupNorm + 多种子（关键 4 个配置；S 为空/s2/s3/s4/s5）
-D=D:/project/dataset_pam/alphastable
+D=E:/project/data/dataset_pam/alphastable
 python code/python/train_pamnet.py --tag pamnet_gn               --data $D --epochs 15 --norm gn
 python code/python/train_pamnet.py --tag pamnet_gn_s2            --data $D --epochs 15 --norm gn --seed 2
 python code/python/train_pamnet.py --tag pamnet_nopulse_gn       --data $D --epochs 15 --norm gn --pulse 0
@@ -1744,14 +1744,14 @@ python code/analysis/analyze_seeds.py       # 多种子聚合 + 跨种子检验
 python code/analysis/analyze_stability.py   # 逐轮振荡与选择偏差
 python code/analysis/make_fig_seeds.py      # 图 M / 图 N
 python code/analysis/paired_test_pamnet.py  # 样本级配对检验
-python code/analysis/verify_pamnet.py --ckpt D:/project/output_pamnet/model_pamnet_freq_pf.pth \\
+python code/analysis/verify_pamnet.py --ckpt E:/project/data/output_pamnet/model_pamnet_freq_pf.pth \\
     --tag pamnet_freq_pf --freq-refine 2.0 --pulse-freq 1
 python code/analysis/compare_baseline_pam.py
 
 # 8) 适用边界（敏感性）：5 个条件的数据集（单因素轮换，共同随机数）
 #   MATLAB（一次生成全部条件；--conds 可只跑部分）:
 #   gen_sensitivity([1 2 3 4 5])          % a12_r5 / a18_r5 / a20_r5 / a15_r25 / a15_r10
-#   % 基线条件直接用 D:/project/dataset_pam/alphastable；高斯对照用 dataset_pam/gauss
+#   % 基线条件直接用 E:/project/data/dataset_pam/alphastable；高斯对照用 dataset_pam/gauss
 
 # 9) 零样本跨条件评估（含逐样本逐种子结果）
 python code/analysis/eval_sensitivity.py --prep            # 预处理 + 噪声功率分解

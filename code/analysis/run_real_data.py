@@ -28,7 +28,7 @@ import torch
 import pamnet as PN
 import v3_model as V3
 
-CKPT_DIR = r"D:/project/output_pamnet"
+CKPT_DIR = r"E:/project/data/output_pamnet"
 FS_MODEL = 24000          # 训练数据在 MATLAB 侧的采样率
 FS_NET = 6000             # 降采样 4 倍后模型实际看到的采样率
 SEG = 8000                # 帧长（降采样后）

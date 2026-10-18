@@ -287,15 +287,15 @@ __ROWS__
 
 <h2>6. 复现</h2>
 <pre># 1. 生成数据集（α稳定 + 突发干扰，含高斯对照）约 7 分钟，5.7 GB
-matlab -batch "make_dataset_pam('alphastable','D:/project/dataset_pam/alphastable',1.5); \
-               make_dataset_pam('gauss','D:/project/dataset_pam/gauss',1.5)"
+matlab -batch "make_dataset_pam('alphastable','E:/project/data/dataset_pam/alphastable',1.5); \
+               make_dataset_pam('gauss','E:/project/data/dataset_pam/gauss',1.5)"
 
 # 2. 验证噪声模型与数据集
 matlab -batch "test_stblrnd; test_gen_burst"
-python verify_pam_dataset.py D:/project/dataset_pam/alphastable D:/project/dataset_pam/gauss
+python verify_pam_dataset.py E:/project/data/dataset_pam/alphastable E:/project/data/dataset_pam/gauss
 
 # 3. 阶段0 三组实验（串行，约 45 分钟）
-D=D:/project/dataset_pam
+D=E:/project/data/dataset_pam
 python code/python/train_pam.py --tag pam_freq   --data $D/alphastable --epochs 15 --time 0 --fch 2.0
 python code/python/train_pam.py --tag pam_full   --data $D/alphastable --epochs 15 --time 1 --freq 1 --fch 1.0
 python code/python/train_pam.py --tag pam_freq_g --data $D/gauss      --epochs 15 --time 0 --fch 2.0

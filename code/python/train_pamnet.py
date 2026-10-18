@@ -23,7 +23,7 @@ run_eval、同一套 pam_metrics 指标，因此与阶段0 的基线（干净帧
                    而不是输出一个常数。这是导师方案创新点的直接证据。
 
 用法：
-  python train_pamnet.py --tag pamnet --data D:/project/dataset_pam/alphastable \
+  python train_pamnet.py --tag pamnet --data E:/project/data/dataset_pam/alphastable \
       --epochs 15
   python train_pamnet.py --tag pamnet_nopulse --data ... --pulse 0
 """
@@ -78,7 +78,7 @@ def main():
     ap.add_argument("--input-norm", type=int, default=0, dest="input_norm",
                     help="输入尺度归一化 x/rms(x)（训练与评估同步）。"
                          "开启后模型对输入整体尺度不敏感，实测数据可直接用")
-    ap.add_argument("--outdir", default=r"D:/project/output_pamnet")
+    ap.add_argument("--outdir", default=r"E:/project/data/output_pamnet")
     A = ap.parse_args()
     os.makedirs(A.outdir, exist_ok=True)
     SEED = V3.CFG["seed"] if A.seed is None else A.seed

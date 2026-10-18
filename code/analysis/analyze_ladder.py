@@ -29,7 +29,7 @@
 import os, csv, glob, re, json
 import numpy as np
 
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 OUT0 = r"D:/project/output_pam"
 HERE = r"E:/workbuddy/store/2026-10-12-22-50-08"
 FIG = os.path.join(HERE, "figs_pamnet")

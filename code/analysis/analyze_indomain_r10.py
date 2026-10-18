@@ -9,8 +9,8 @@
 各 3 个种子（与 base 的前三个种子一致，便于按种子配对），
 然后与 base 上的同配置结果、以及与 a15_r10 上的零样本结果三方对比。
 
-数据来源：D:/project/output_pamnet/summary_sens_r10_{nopulse,pf}[_sN].csv
-          D:/project/output_pamnet/train_log_sens_r10_*.txt
+数据来源：E:/project/data/output_pamnet/summary_sens_r10_{nopulse,pf}[_sN].csv
+          E:/project/data/output_pamnet/train_log_sens_r10_*.txt
           sens_out/sens_summary_testA.json（零样本侧）
 
 用法：python analyze_indomain_r10.py [--split testA|testC]
@@ -20,7 +20,7 @@ import numpy as np
 
 WORK = r"E:/workbuddy/store/2026-10-12-22-50-08"
 OUTD = os.path.join(WORK, "sens_out")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 SPLITS = ["testA", "testC"]
 COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out",
         "fmsnr_med_in", "fmsnr_med_out", "frmgain_med", "frmgain_clean",

@@ -120,7 +120,7 @@ CK = [
      dict(c=24, n_fft=512, hop=128, use_pulse=False, norm="gn")),
 ]
 for name, kw in CK:
-    path = os.path.join(r"D:/project/output_pamnet", name)
+    path = os.path.join(r"E:/project/data/output_pamnet", name)
     if not os.path.exists(path):
         print("  -  跳过（文件不存在）%s" % name); continue
     m = PN.PAMNet(**kw)

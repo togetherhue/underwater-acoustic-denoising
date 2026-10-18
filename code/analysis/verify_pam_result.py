@@ -21,7 +21,7 @@ import v3_model as V3
 import pam_metrics as PM
 
 OUT = r"D:/project/output_pam"
-DATA = r"D:/project/dataset_pam"
+DATA = r"E:/project/data/dataset_pam"
 SEG, DS = 8000, 4
 RUNS = [("pam_freq", "alphastable", 0, 2.0),
         ("pam_full", "alphastable", 1, 1.0),

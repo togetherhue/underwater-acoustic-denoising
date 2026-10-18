@@ -21,7 +21,7 @@
 set -u
 PY="/d/anaconda/python.exe"
 SRC="C:/Users/32213/PycharmProjects/project1"
-OUT="D:/project/output_pamnet"
+OUT="E:/project/data/output_pamnet"
 LOG="E:/workbuddy/store/2026-10-12-22-50-08/sens_logs/train_alpha.log"
 
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

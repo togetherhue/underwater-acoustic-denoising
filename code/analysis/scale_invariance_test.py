@@ -27,7 +27,7 @@ import v3_model as V3
 import pamnet as PN
 
 OUTD = os.path.join(HERE, "sens_out")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 FS, SEG = 6000, 8000
 SCALES = [0.25, 0.5, 1.0, 2.0, 4.0]
 
@@ -39,7 +39,7 @@ R4_ARCH = dict(use_short=True, use_long=True, use_gate=True, use_pulse=False,
 
 def load_npy(split):
     """直接从 _npy 缓存读 testA/testC（与 PAMDataset 同一口径，已是定长 float32）"""
-    base = r"D:/project/dataset_pam/alphastable/_npy"
+    base = r"E:/project/data/dataset_pam/alphastable/_npy"
     p = [os.path.join(base, "%s_%s.npy" % (split, t)) for t in ("n", "c", "m")]
     if not all(os.path.exists(x) for x in p):
         return None

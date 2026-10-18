@@ -16,8 +16,8 @@
 set -u
 PY="/d/anaconda/python.exe"
 SRC="C:/Users/32213/PycharmProjects/project1"
-DATA="D:/project/dataset_pam/alphastable"
-OUT="D:/project/output_pamnet"
+DATA="E:/project/data/dataset_pam/alphastable"
+OUT="E:/project/data/output_pamnet"
 LOG="E:/workbuddy/store/2026-10-12-22-50-08/sens_logs/device_check.log"
 
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

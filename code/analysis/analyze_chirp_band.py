@@ -39,7 +39,7 @@ import pamnet as PN            # noqa: E402
 import pam_metrics as PM       # noqa: E402
 from train_pam import PAMDataset, build_loader, COLS   # noqa: E402
 
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 SCAN = r"D:/project/ds_chirpscan/chirpscan"
 CTAB = r"D:/project/chirp_table.csv"
 FIG = os.path.join(_HERE, "figs_pamnet")

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 HERE = r"E:/workbuddy/store/2026-10-12-22-50-08"
 FIG = os.path.join(HERE, "figs_pamnet")
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "DejaVu Sans"]
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["font.size"] = 10

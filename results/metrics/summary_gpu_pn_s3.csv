@@ -1,0 +1,3 @@
+tag,testset,n,params,c,norm,use_short,use_long,use_gate,use_pulse,freq_refine,pulse_freq,loss,delta,lam_imp,lam_spec,select,epochs,seed,input_norm,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+gpu_pn_s3,testA,1080,8457,24,gn,1,1,1,0,0.0,0,huber,0.2,1.0,0.05,fg,15,3,0,-7.9633,8.8126,-8.0076,8.1644,-4.6104,6.5571,10.5033,10.0898,16.6652,9.4263,0.3390,0.1560
+gpu_pn_s3,testC,240,8457,24,gn,1,1,1,0,0.0,0,huber,0.2,1.0,0.05,fg,15,3,0,-8.2654,8.4201,-8.3100,7.7731,-4.9114,6.3097,10.4655,10.0153,17.1297,9.0465,0.3242,0.1551

@@ -86,7 +86,7 @@ def main():
     A = ap.parse_args()
     torch.set_num_threads(int(os.environ.get("OMP_NUM_THREADS", "4")))
 
-    files = sorted(glob.glob(os.path.join(r"D:/project/dataset_pam/alphastable",
+    files = sorted(glob.glob(os.path.join(r"E:/project/data/dataset_pam/alphastable",
                                           "testA", "*.mat")))[:A.nmax]
     S, V = [], []
     for f in files:

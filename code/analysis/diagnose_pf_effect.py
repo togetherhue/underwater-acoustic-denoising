@@ -12,8 +12,8 @@ import os, csv, glob, re
 import numpy as np
 import scipy.io as sio
 
-OUT = r"D:/project/output_pamnet"
-DS = r"D:/project/dataset_pam/alphastable"
+OUT = r"E:/project/data/output_pamnet"
+DS = r"E:/project/data/dataset_pam/alphastable"
 COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out", "fmsnr_med_in", "fmsnr_med_out",
         "frmgain_med", "frmgain_clean", "frmgain_imp", "frmgain_imp_min",
         "fmsnr_frac_bad_out", "frac_imp"]

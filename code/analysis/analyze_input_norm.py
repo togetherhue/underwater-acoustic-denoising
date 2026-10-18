@@ -13,7 +13,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUTD = os.path.join(HERE, "sens_out")
-CKPT = r"D:/project/output_pamnet"
+CKPT = r"E:/project/data/output_pamnet"
 COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out", "fmsnr_med_in", "fmsnr_med_out",
         "frmgain_med", "frmgain_clean", "frmgain_imp", "frmgain_imp_min",
         "fmsnr_frac_bad_out", "frac_imp"]

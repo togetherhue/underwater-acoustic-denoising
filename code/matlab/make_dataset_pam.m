@@ -22,14 +22,14 @@ function make_dataset_pam(noise_type, out_root, alpha_val, splits_override, seed
 %      testA   chirp 18-20 × 信道 1-18     （新波形 + 见过的信道）
 %      testC   chirp 18-20 × 信道 22-25    （新波形 + 新信道）
 %
-%  用法：make_dataset_pam('alphastable', 'D:/project/dataset_pam/alphastable', 1.5)
-%        make_dataset_pam('gauss',       'D:/project/dataset_pam/gauss')
+%  用法：make_dataset_pam('alphastable', 'E:/project/data/dataset_pam/alphastable', 1.5)
+%        make_dataset_pam('gauss',       'E:/project/data/dataset_pam/gauss')
 %        % 干扰与 chirp 解耦（用于隔离"波形效应"）：
 %        make_dataset_pam('alphastable','D:/project/ds_scan_paired',1.5, sp, 'paired')
 %==========================================================================
 
 if nargin < 1 || isempty(noise_type); noise_type = 'alphastable'; end
-if nargin < 2 || isempty(out_root);   out_root = fullfile('D:/project/dataset_pam', noise_type); end
+if nargin < 2 || isempty(out_root);   out_root = fullfile('E:/project/data/dataset_pam', noise_type); end
 if nargin < 3 || isempty(alpha_val);  alpha_val = 1.5; end
 if nargin < 4; splits_override = []; end
 if nargin < 5 || isempty(seed_mode); seed_mode = 'index'; end

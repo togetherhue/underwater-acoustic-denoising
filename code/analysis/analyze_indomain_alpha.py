@@ -22,7 +22,7 @@ import numpy as np
 
 WORK = r"E:/workbuddy/store/2026-10-12-22-50-08"
 OUTD = os.path.join(WORK, "sens_out")
-CK = r"D:/project/output_pamnet"
+CK = r"E:/project/data/output_pamnet"
 COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out", "fmsnr_med_in", "fmsnr_med_out",
         "frmgain_med", "frmgain_clean", "frmgain_imp", "frmgain_imp_min",
         "fmsnr_frac_bad_out", "frac_imp"]

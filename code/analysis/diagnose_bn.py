@@ -67,8 +67,8 @@ def run_eval_mode(model, files, train_mode, n=120):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ckpt", default=r"D:/project/output_pamnet/model_pamnet.pth")
-    ap.add_argument("--data", default=r"D:/project/dataset_pam/alphastable")
+    ap.add_argument("--ckpt", default=r"E:/project/data/output_pamnet/model_pamnet.pth")
+    ap.add_argument("--data", default=r"E:/project/data/dataset_pam/alphastable")
     ap.add_argument("--n", type=int, default=120)
     A = ap.parse_args()
 

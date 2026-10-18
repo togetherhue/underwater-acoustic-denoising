@@ -22,7 +22,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-OUT = r"D:/project/output_pamnet"
+OUT = r"E:/project/data/output_pamnet"
 HERE = r"E:/workbuddy/store/2026-10-12-22-50-08"
 FIG = os.path.join(HERE, "figs_pamnet")
 os.makedirs(FIG, exist_ok=True)
