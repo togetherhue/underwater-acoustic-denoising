@@ -73,7 +73,7 @@ print()
 print('=' * 82)
 print('参考：用户生成的 channel_H_1 自己的频带分布')
 print('=' * 82)
-H = gv('D:/project/信道产生/data/channel_H_1.mat', 'channel_H')
+H = gv('E:/project/data/信道产生/data/channel_H_1.mat', 'channel_H')
 P = power_spectrum(H, 8192)
 tot = sum(P)
 for label, f0, f1 in BANDS:

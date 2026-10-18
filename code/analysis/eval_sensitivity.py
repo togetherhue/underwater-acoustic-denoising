@@ -44,15 +44,15 @@ NFFT, HOP = V3.CFG["n_fft"], V3.CFG["hop_length"]
 
 CONDS = {
     "base":    r"D:/project/dataset_pam/alphastable",
-    "a12_r5":  r"D:/project/ds_sens/a12_r5",
-    "a18_r5":  r"D:/project/ds_sens/a18_r5",
-    "a20_r5":  r"D:/project/ds_sens/a20_r5",
-    "a15_r25": r"D:/project/ds_sens/a15_r25",
-    "a15_r10": r"D:/project/ds_sens/a15_r10",
+    "a12_r5":  r"E:/project/data/ds_sens/a12_r5",
+    "a18_r5":  r"E:/project/data/ds_sens/a18_r5",
+    "a20_r5":  r"E:/project/data/ds_sens/a20_r5",
+    "a15_r25": r"E:/project/data/ds_sens/a15_r25",
+    "a15_r10": r"E:/project/data/ds_sens/a15_r10",
     "gauss":   r"D:/project/dataset_pam/gauss",
     # 等有效功率 SNR 的 α 重扫：名义 SNR 已平移，使有效功率 SNR 与 base 对应
-    "m_a12":   r"D:/project/ds_sens_matched/m_a12",
-    "m_a18":   r"D:/project/ds_sens_matched/m_a18",
+    "m_a12":   r"E:/project/data/ds_sens_matched/m_a12",
+    "m_a18":   r"E:/project/data/ds_sens_matched/m_a18",
 }
 
 MODELS = {

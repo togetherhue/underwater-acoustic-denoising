@@ -75,6 +75,9 @@ def main():
     ap.add_argument("--bs", type=int, default=16)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--input-norm", type=int, default=0, dest="input_norm",
+                    help="输入尺度归一化 x/rms(x)（训练与评估同步）。"
+                         "开启后模型对输入整体尺度不敏感，实测数据可直接用")
     ap.add_argument("--outdir", default=r"D:/project/output_pamnet")
     A = ap.parse_args()
     os.makedirs(A.outdir, exist_ok=True)
@@ -106,8 +109,8 @@ def main():
     print("损失        : %s  δ=%.3f  λ_imp=%.2f  λ_spec=%.2f  seed=%d"
           % (A.loss, A.delta, A.lam_imp, A.lam_spec, SEED))
 
-    tr = build_loader(d_tr, True, A.bs, A.workers)
-    va = build_loader(d_va, False, A.bs, A.workers)
+    tr = build_loader(d_tr, True, A.bs, A.workers, A.input_norm)
+    va = build_loader(d_va, False, A.bs, A.workers, A.input_norm)
     print("训练样本 %d   验证样本 %d   每轮 batch %d" %
           (len(tr.dataset), len(va.dataset), len(tr)))
 
@@ -232,7 +235,7 @@ def main():
     print("-" * 100)
     summary = []
     for name, folder in tests:
-        R = run_eval(model, folder, A.bs, A.workers)
+        R = run_eval(model, folder, A.bs, A.workers, A.input_norm)
         np.savetxt(os.path.join(A.outdir, "result_%s_%s.csv" % (A.tag, name)), R,
                    delimiter=",", header=",".join(COLS), comments="")
         m = np.nanmean(R, axis=0)
@@ -253,12 +256,12 @@ def main():
         w = csv.writer(f)
         w.writerow(["tag", "testset", "n", "params", "c", "norm", "use_short", "use_long",
                     "use_gate", "use_pulse", "freq_refine", "pulse_freq", "loss", "delta",
-                    "lam_imp", "lam_spec", "select", "epochs", "seed"] + COLS)
+                    "lam_imp", "lam_spec", "select", "epochs", "seed", "input_norm"] + COLS)
         for row in summary:
             w.writerow([A.tag, row[0], row[1], model.n_params(), A.c, A.norm, A.short, A.long,
                         A.gate, A.pulse, A.freq_refine, A.pulse_freq, A.loss, A.delta,
                         A.lam_imp, A.lam_spec, A.select, A.epochs, SEED]
-                       + ["%.4f" % v for v in row[2:]])
+                       + [A.input_norm] + ["%.4f" % v for v in row[2:]])
     print("结果 -> %s/summary_%s.csv" % (A.outdir, A.tag))
 
 

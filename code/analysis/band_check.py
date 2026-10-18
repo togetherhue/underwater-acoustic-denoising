@@ -58,7 +58,7 @@ print('=' * 78)
 print('1) 三个信号各自的归一化频带 (cycles/sample)')
 print('=' * 78)
 chirp = gv('D:/project/chirp_signal.mat', 'chirp_signal')
-H = gv('D:/project/信道产生/data/channel_H_1.mat', 'channel_H')
+H = gv('E:/project/data/信道产生/data/channel_H_1.mat', 'channel_H')
 noisy = gv('D:/project/te_signal/test_sample_1.mat', 'noisy_signal')
 
 c_lo, c_hi, c_pk = report('chirp_signal', chirp, 16384)

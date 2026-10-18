@@ -10,7 +10,7 @@ function gen_ch(idxs, fct, outdir, seed)
 %   outdir: 输出目录
 %   seed  : 随机种子（★必须给！否则同时启动的多个进程会生成完全相同的信道）
 %
-%   用法：  gen_ch(1:10, 10, 'D:/project/信道产生/data_fixed', 1001)
+%   用法：  gen_ch(1:10, 10, 'E:/project/data/信道产生/data_fixed', 1001)
 
 if nargin < 4 || isempty(seed)
     seed = round(mod(now*86400, 1e6));   % 兜底：用时间播种
@@ -19,10 +19,10 @@ rng(seed, 'twister');
 fprintf('随机种子 seed = %d\n', seed);
 
 if nargin < 3 || isempty(outdir)
-    outdir = 'D:/project/信道产生/data_fixed';
+    outdir = 'E:/project/data/信道产生/data_fixed';
 end
 
-work = 'D:/project/信道产生';
+work = 'E:/project/data/信道产生';
 fs = 24000;  Len = 8000;  df = fs/Len;
 fl = 798;    fh = 1500;
 Dist = 20000;

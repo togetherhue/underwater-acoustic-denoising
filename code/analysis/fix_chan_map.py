@@ -3,7 +3,7 @@
 import numpy as np, glob, os, scipy.io as sio
 from scipy.signal import resample_poly
 
-CH = r"D:/project/信道产生/data_fixed"
+CH = r"E:/project/data/信道产生/data_fixed"
 fl = sorted(glob.glob(os.path.join(CH, "channel_H_*.mat")))
 print("glob 顺序前 6 个:", [os.path.basename(f) for f in fl[:6]])
 

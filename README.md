@@ -799,6 +799,23 @@ models/
 
 ---
 
+## 二之二、数据存放位置
+
+本项目的数据统一存放在 **`E:/project/data/`**（D 盘空间紧张，已于 2026-10-18 从
+`D:/project/` 迁移过来，脚本内路径已同步更新）：
+
+| 目录 | 大小 | 内容 |
+|---|---|---|
+| `E:/project/data/dataset_pam/` | 6.3 GB | base 与高斯对照数据集（alphastable / gauss）+ `_npy` 缓存 |
+| `E:/project/data/ds_sens/` | 14.6 GB | 敏感性 5 条件（a12_r5 / a18_r5 / a20_r5 / a15_r25 / a15_r10） |
+| `E:/project/data/ds_sens_matched/` | 6.8 GB | 等有效功率匹配 2 条件（m_a12 / m_a18） |
+| `E:/project/data/信道产生/` | 34 MB | 信道冲激响应（上游输入数据） |
+| `E:/project/data/output_pamnet/` | ~50 MB | 全部训练产物（checkpoint / summary / 逐样本 CSV / 训练日志） |
+
+> 注：dataset_pam 与 output_pamnet 待训练全部结束后迁移（DataLoader 持有
+> _npy 的 mmap 句柄，训练中移动会失败）；`ds_sens` 系与信道产生已迁移完毕
+> 并验证（文件数与 .npy 缓存探测均一致，见 `code/analysis/_verify_migration.py`）。
+
 ## 三、复现步骤
 
 ### 环境
@@ -809,7 +826,7 @@ models/
 
 1. **生成信道**（需要 RAM 声场计算程序，未包含在本仓库）
    ```matlab
-   gen_ch(1:25, 10, 'D:/project/信道产生/data_fixed')     % 25 个信道
+   gen_ch(1:25, 10, 'E:/project/data/信道产生/data_fixed')     % 25 个信道
    ```
    自检：新信道的 99% 能量应落在归一化频率 **0.0333 ~ 0.0625**。
 
@@ -1011,8 +1028,8 @@ pip install "torch==2.14.1+cu126" --index-url https://download.pytorch.org/whl/c
 5040 个训练样本**每轮重复做完全相同的降采样**。
 
 ```bash
-python code/analysis/make_npy_cache.py --data D:/project/ds_sens/a15_r10
-python code/analysis/make_npy_cache.py --data D:/project/ds_sens/a15_r10 --verify
+python code/analysis/make_npy_cache.py --data E:/project/data/ds_sens/a15_r10
+python code/analysis/make_npy_cache.py --data E:/project/data/ds_sens/a15_r10 --verify
 ```
 
 - 输出 `<root>/_npy/<split>_{n,c,m}.npy`，`PAMDataset` 自动探测并优先使用（用 mmap，

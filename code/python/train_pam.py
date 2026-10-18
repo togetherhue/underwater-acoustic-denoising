@@ -45,11 +45,15 @@ class PAMDataset(Dataset):
     且用 mmap 避免多 worker 各拷一份。没有缓存时自动回退到 .mat。
     """
 
-    def __init__(self, folder, seg_len, ds):
+    def __init__(self, folder, seg_len, ds, rms_norm=False):
         self.files = sorted(glob.glob(os.path.join(folder, "*.mat")))
         if not self.files:
             raise FileNotFoundError(folder + " 里没有 .mat 文件")
         self.seg_len, self.ds = seg_len, ds
+        # 输入尺度归一化：把 noisy / clean 同除以 noisy 的 rms。
+        # 训练数据在 MATLAB 侧把 rms(clean) 归一化为 1，模型对输入尺度极度敏感，
+        # 而实测数据只能按 noisy 归一化 —— 开启后模型即不受输入尺度影响。
+        self.rms_norm = bool(rms_norm)
         # ---- .npy 缓存探测 ----
         self.npy = None
         split = os.path.basename(os.path.normpath(folder))
@@ -72,12 +76,23 @@ class PAMDataset(Dataset):
         L = self.seg_len
         return x[:L] if len(x) >= L else np.pad(x, (0, L - len(x)))
 
+    def _maybe_norm(self, n, c):
+        """rms_norm 开启时同除 noisy 的 rms；否则原样返回。"""
+        if not self.rms_norm:
+            return n, c
+        s = float(np.sqrt(np.mean(np.asarray(n, np.float64) ** 2)))
+        if not np.isfinite(s) or s <= 0:
+            return n, c
+        return n / s, c / s
+
     def __getitem__(self, i):
         if self.npy is not None:
             n_arr, c_arr, m_arr = self.npy
-            return (torch.from_numpy(np.array(n_arr[i], dtype=np.float32)),
-                    torch.from_numpy(np.array(c_arr[i], dtype=np.float32)),
-                    torch.from_numpy(np.array(m_arr[i], dtype=np.float32)))
+            n = np.array(n_arr[i], dtype=np.float32)
+            c = np.array(c_arr[i], dtype=np.float32)
+            k = np.array(m_arr[i], dtype=np.float32)
+            n, c = self._maybe_norm(n, c)
+            return (torch.from_numpy(n), torch.from_numpy(c), torch.from_numpy(k))
         m = sio.loadmat(self.files[i])
         n = np.asarray(m["noisy_signal"]).squeeze().astype(np.float32)
         c = np.asarray(m["clean_signal"]).squeeze().astype(np.float32)
@@ -87,13 +102,14 @@ class PAMDataset(Dataset):
             c = resample_poly(c, 1, self.ds).astype(np.float32)
             k = resample_poly(k, 1, self.ds)
         k = (self._fix(k) > 0.3).astype(np.float32)
-        return (torch.from_numpy(self._fix(n)),
-                torch.from_numpy(self._fix(c)),
-                torch.from_numpy(k))
+        # 注意：必须【先定长再算 rms】，与 _npy 路径（本就是定长数组）保持同一尺度定义，
+        # 否则换数据源会导致训练/测试的输入尺度系统性偏差 sqrt(有效长度/8000)。
+        n, c = self._maybe_norm(self._fix(n), self._fix(c))
+        return (torch.from_numpy(n), torch.from_numpy(c), torch.from_numpy(k))
 
 
-def build_loader(folder, shuffle, bs, workers):
-    ds = PAMDataset(folder, V3.CFG["seg_len"], V3.CFG["downsample"])
+def build_loader(folder, shuffle, bs, workers, rms_norm=False):
+    ds = PAMDataset(folder, V3.CFG["seg_len"], V3.CFG["downsample"], rms_norm)
     return torch.utils.data.DataLoader(
         ds, batch_size=bs, shuffle=shuffle, num_workers=workers,
         drop_last=shuffle, pin_memory=(V3.DEVICE.type == "cuda"))
@@ -105,9 +121,14 @@ COLS = ["snr_in", "snr_out", "sisdr_in", "sisdr_out",
 
 
 @torch.no_grad()
-def run_eval(model, folder, bs, workers):
-    """逐样本计算全部指标，返回 dict(列名 -> np.array)"""
-    loader = build_loader(folder, False, bs, workers)
+def run_eval(model, folder, bs, workers, rms_norm=False):
+    """逐样本计算全部指标，返回 dict(列名 -> np.array)
+
+    rms_norm 必须与训练时一致：若是，则输入与目标同除 noisy 的 rms，
+    指标在归一化域里计算 —— 由于各帧增益/SNR 都是尺度不变量，结果与
+    在原尺度上评估等价，但模型实际见到的输入分布与训练时相同。
+    """
+    loader = build_loader(folder, False, bs, workers, rms_norm)
     rows = []
     for noisy, clean, mask in loader:
         n = noisy.unsqueeze(1).to(V3.DEVICE)

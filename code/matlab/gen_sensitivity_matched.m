@@ -33,7 +33,7 @@ CONDS = {
 };
 
 if nargin < 1 || isempty(idx); idx = 1:size(CONDS,1); end
-out_base = 'D:/project/ds_sens_matched';
+out_base = 'E:/project/data/ds_sens_matched';
 
 for k = idx
     name = CONDS{k,1};

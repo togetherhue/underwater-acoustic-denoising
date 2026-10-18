@@ -23,7 +23,7 @@ PAMDataset 每次 __getitem__ 都 loadmat + resample_poly。5040 个训练样本
     <root>/_npy/<split>_m.npy   float32 [N, seg_len]  (0/1)
 
 用法：
-    python make_npy_cache.py --data D:/project/ds_sens/a15_r10
+    python make_npy_cache.py --data E:/project/data/ds_sens/a15_r10
     python make_npy_cache.py --data ... --verify   # 转换后逐元素校验
 """
 import os, sys, glob, argparse, time

@@ -5,7 +5,7 @@ Vfre = fl:10:fh;          % 798..1498, 71 个
 f_full = fl:df:fh;        % 798..1500, 235 个
 bin = round(f_full/df);   % 266..500
 
-V=load('D:/project/信道产生/data_verify/channel_H_1.mat','channel_H');
+V=load('E:/project/data/信道产生/data_verify/channel_H_1.mat','channel_H');
 href=V.channel_H(:).';
 fprintf('href size=%s  peak@%d  max=%.4e\n', mat2str(size(href)), ...
         find(abs(href)==max(abs(href)),1), max(abs(href)));

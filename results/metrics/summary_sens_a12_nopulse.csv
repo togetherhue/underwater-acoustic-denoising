@@ -1,0 +1,3 @@
+tag,testset,n,params,c,norm,use_short,use_long,use_gate,use_pulse,freq_refine,pulse_freq,loss,delta,lam_imp,lam_spec,select,epochs,seed,snr_in,snr_out,sisdr_in,sisdr_out,fmsnr_med_in,fmsnr_med_out,frmgain_med,frmgain_clean,frmgain_imp,frmgain_imp_min,fmsnr_frac_bad_out,frac_imp
+sens_a12_nopulse,testA,1080,14367,24,gn,1,1,1,0,2.0,0,huber,0.2,1.0,0.05,fg,15,20261013,-8.7025,19.2891,-8.7435,19.2172,-0.9634,17.7022,18.3713,17.2404,27.4300,17.0004,0.1313,0.1560
+sens_a12_nopulse,testC,240,14367,24,gn,1,1,1,0,2.0,0,huber,0.2,1.0,0.05,fg,15,20261013,-9.1504,17.2120,-9.2008,17.1205,-1.0105,16.0863,16.9377,15.8634,26.0696,14.9832,0.0908,0.1551

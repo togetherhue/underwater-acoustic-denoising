@@ -38,7 +38,7 @@ N_fine  = 13;           % 微调样本数
 
 snr_list = [-10 -5 0 5 10];   % 目标真实 SNR [dB]，按此随机分层
 
-ch_dir     = 'D:/project/信道产生/data_fixed';
+ch_dir     = 'E:/project/data/信道产生/data_fixed';
 chirp_file = 'D:/project/chirp_signal.mat';
 
 out_tr      = 'D:/project/tr_signal_new';

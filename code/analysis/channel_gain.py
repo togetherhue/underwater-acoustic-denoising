@@ -3,7 +3,7 @@
 import numpy as np, glob, os
 import scipy.io as sio
 
-CH = r"D:/project/信道产生/data_fixed"
+CH = r"E:/project/data/信道产生/data_fixed"
 files = sorted(glob.glob(os.path.join(CH, "channel_H_*.mat")))
 print("信道文件 %d 个" % len(files))
 

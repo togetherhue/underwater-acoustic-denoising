@@ -27,7 +27,7 @@ import pam_metrics as PM          # noqa: E402
 WORK = r"E:/workbuddy/store/2026-10-12-22-50-08"
 OUTD = os.path.join(WORK, "sens_out")
 CKPT = r"D:/project/output_pamnet"
-DATA = r"D:/project/ds_sens/a15_r10"
+DATA = r"E:/project/data/ds_sens/a15_r10"
 
 
 def main():

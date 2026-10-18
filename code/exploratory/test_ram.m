@@ -1,5 +1,5 @@
 %% 单点连通性测试：验证 RAM exe 能跑通、测单次耗时
-work = 'D:/project/信道产生';
+work = 'E:/project/data/信道产生';
 cd(work);
 addpath(work);
 

@@ -98,7 +98,7 @@ print()
 print('#' * 78)
 print('# 3) 验证假设: noisy = conv(chirp, channel_H) + noise ?')
 print('#' * 78)
-hp = 'D:/project/信道产生/data/channel_H_1.mat'
+hp = 'E:/project/data/信道产生/data/channel_H_1.mat'
 hn, hd = getvar(hp)
 print('  channel_H_1.mat: 变量=%s 长度=%d rms=%.3e max|.|=%.3e' % (hn, len(hd), rms(hd), max(abs(v) for v in hd)))
 print('  卷积长度 = %d + %d - 1 = %d ;  test_sample 长度 = %d' % (len(cd_), len(hd), len(cd_) + len(hd) - 1, len(td)))

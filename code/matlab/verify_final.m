@@ -16,7 +16,7 @@ fprintf('重采样后 chirp 频带 = %.5f ~ %.5f   （信道带 0.0333~0.0625）
         find(E1>=0.005,1)/N1, find(E1>=0.995,1)/N1);
 
 %% 2. 修正后的信道（gen_ch 生成，已验证频带正确）
-H = load('D:/project/信道产生/data_verify/channel_H_1.mat','channel_H');
+H = load('E:/project/data/信道产生/data_verify/channel_H_1.mat','channel_H');
 h = H.channel_H(:).';
 pk = find(abs(h)==max(abs(h)),1);
 % 时延扩展：能量累积到 50% / 90% 的位置

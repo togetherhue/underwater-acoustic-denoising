@@ -1,7 +1,7 @@
 %% 信道全量验证
 clc; clear;
 fs=24000; Len=8000;
-d = dir('D:/project/信道产生/data_fixed/channel_H_*.mat');
+d = dir('E:/project/data/信道产生/data_fixed/channel_H_*.mat');
 H = zeros(numel(d), Len); nm = cell(numel(d),1);
 for k=1:numel(d)
     S = load(fullfile(d(k).folder,d(k).name),'channel_H');
@@ -47,7 +47,7 @@ fprintf('时延扩展: min=%d 中位=%d max=%d 点  (%.1f ~ %.1f ms)\n', ...
 
 %% 3. 与旧信道对比
 fprintf('\n=== 与旧信道对比 ===\n');
-o = load('D:/project/信道产生/data/channel_H_1.mat','channel_H'); o=o.channel_H(:).';
+o = load('E:/project/data/信道产生/data/channel_H_1.mat','channel_H'); o=o.channel_H(:).';
 P = abs(fft(o(:),Len)).^2; P=P(1:Len/2+1); E=cumsum(P)/sum(P);
 fprintf('  旧信道 99%%频带 = %.5f ~ %.5f  （错误）\n', find(E>=0.005,1)/Len, find(E>=0.995,1)/Len);
 h = H(1,:);

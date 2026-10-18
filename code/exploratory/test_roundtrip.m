@@ -9,7 +9,7 @@ bin    = round(f_full/df);
 shift_to_2501 = @(x) local_shift(x, Len);
 
 %% 1. 取一个"正确"的信道
-V = load('D:/project/信道产生/data_verify/channel_H_1.mat','channel_H');
+V = load('E:/project/data/信道产生/data_verify/channel_H_1.mat','channel_H');
 href = V.channel_H(:).';          % 峰值已在 2501
 
 %% 2. 模拟 bug：把 266:500 的值搬到 80:150

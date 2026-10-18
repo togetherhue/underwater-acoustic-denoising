@@ -5,12 +5,12 @@ function rescue_ch(srcDirs, outdir, fct)
 %         放到了 bin 80:150（对应 240~450Hz）。但这 71 个值本身是在
 %         798:10:1500 Hz 上算的，物理上正确。取出来放回 bin 266:500 即可。
 %
-%   用法： rescue_ch({'D:/project/信道产生/data','D:/project/信道产生2/data'}, ...
-%                    'D:/project/信道产生/data_fixed', 10)
+%   用法： rescue_ch({'E:/project/data/信道产生/data','E:/project/data/信道产生2/data'}, ...
+%                    'E:/project/data/信道产生/data_fixed', 10)
 
 if nargin < 3 || isempty(fct); fct = 10; end
 if nargin < 2 || isempty(outdir)
-    outdir = 'D:/project/信道产生/data_fixed';
+    outdir = 'E:/project/data/信道产生/data_fixed';
 end
 if ~exist(outdir,'dir'); mkdir(outdir); end
 
@@ -24,7 +24,7 @@ n_exp  = numel(Vfre);
 assert(bin(1)==266 && bin(end)==500, 'bin 映射异常');
 
 % 往返验证：用刚生成的正确信道模拟"放错位置"，再抢救回来
-vf = 'D:/project/信道产生/data_verify/channel_H_1.mat';
+vf = 'E:/project/data/信道产生/data_verify/channel_H_1.mat';
 if exist(vf,'file')
     V = load(vf,'channel_H'); href = V.channel_H(:).';
     F  = fft(href(:), Len);

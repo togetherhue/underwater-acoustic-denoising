@@ -26,7 +26,7 @@ cfg.snr_list      = [-10 -5 0 5 10];
 cfg.modtype       = upper(modtype);
 cfg.normalize     = true;
 cfg.seed          = 20261013;
-cfg.ch_dir        = 'D:/project/信道产生/data_fixed';
+cfg.ch_dir        = 'E:/project/data/信道产生/data_fixed';
 
 rng(cfg.seed, 'twister');
 

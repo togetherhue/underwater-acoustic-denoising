@@ -20,7 +20,7 @@
 set -u
 PY="/d/anaconda/python.exe"
 SRC="C:/Users/32213/PycharmProjects/project1"
-DATA="D:/project/ds_sens/a15_r10"
+DATA="E:/project/data/ds_sens/a15_r10"
 OUT="D:/project/output_pamnet"
 LOG="E:/workbuddy/store/2026-10-12-22-50-08/sens_logs/train_r10.log"
 

@@ -7,7 +7,7 @@
 %       所以只要把它们从 bin 80:150 取出来，插值后放回 bin 266:500 即可。
 
 clc; clear;
-old_file = 'D:/project/信道产生/data/channel_H_1.mat';
+old_file = 'E:/project/data/信道产生/data/channel_H_1.mat';
 fs = 24000; Len = 8000; df = fs/Len;
 fl = 798; fh = 1500; fct = 10;
 
@@ -55,7 +55,7 @@ else
 end
 
 % 与原修正版（重跑 RAM 得到的）对比
-vfile = 'D:/project/信道产生/data_verify/channel_H_1.mat';
+vfile = 'E:/project/data/信道产生/data_verify/channel_H_1.mat';
 if exist(vfile, 'file')
     V = load(vfile, 'channel_H');
     h_ref = V.channel_H(:).';

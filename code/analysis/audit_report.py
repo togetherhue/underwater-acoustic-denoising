@@ -71,6 +71,29 @@ def main():
         dv = r5 - r4
         checks.append(("域内重训(r10) Δ", "%+.3f" % dv, dv))
         checks.append(("域内重训(r10) R5", "%.2f" % r5, r5))
+    # ---- 尺度敏感性 / 输入归一化 / 架构排序域内 ----
+    SI = load("scale_invariance.json")
+    if SI and SI.get("res"):
+        ks = list(SI["res"].keys())
+        checks.append(("老 R5 跨尺度极差", "%.2f" % SI["res"][ks[0]]["range_db"],
+                       SI["res"][ks[0]]["range_db"]))
+        checks.append(("老 R5 s=0.25 增益", "%.2f" % SI["res"][ks[0]]["gains"].get("0.25", 0),
+                       SI["res"][ks[0]]["gains"].get("0.25", 0)))
+        if len(SI["res"]) > 1:
+            checks.append(("新 R5 跨尺度极差", "%.2f" % SI["res"][ks[-1]]["range_db"],
+                           SI["res"][ks[-1]]["range_db"]))
+    ING = load("input_norm_testA.json")
+    if ING and ING.get("inm") and ING.get("devchk"):
+        inm = float(np.mean(ING["inm"]["r5"])); dev = float(np.mean(ING["devchk"]["r5"]))
+        checks.append(("归一化 R5 干扰帧", "%.2f" % inm, inm))
+        checks.append(("归一化 vs 无归一化 R4 差", "%.3f" % (
+            float(np.mean(ING["inm"]["r4"])) - float(np.mean(ING["devchk"]["r4"]))), None))
+    IAG = load("inarch_gpu_testA.json")
+    if IAG and IAG.get("tests"):
+        for k, v in IAG["tests"].items():
+            short = k.split("（")[0]
+            checks.append(("域内架构 " + short, "%+.3f" % v["mean"], v["mean"]))
+
     DA = load("indomain_alpha_testA.json")
     if DA:
         for k, nm in (("a12", "α=1.2"), ("a18", "α=1.8")):

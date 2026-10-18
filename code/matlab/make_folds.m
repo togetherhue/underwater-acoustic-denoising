@@ -17,7 +17,7 @@ function make_folds()
 %  => 两者之差就是纯粹的「信道新颖度代价」
 %==========================================================================
 
-CH  = 'D:/project/信道产生/data_fixed';
+CH  = 'E:/project/data/信道产生/data_fixed';
 OUT = 'D:/project/dataset_folds';
 FSch = 24000;
 N_FOLD = 3;

@@ -14,7 +14,7 @@
 %
 %  用法：
 %     MATLAB 里直接运行（不需要 cd，路径全是绝对路径）
-%     结果写到 D:/project/信道产生/data_fixed/
+%     结果写到 E:/project/data/信道产生/data_fixed/
 %
 %  参数：
 %     N_chan  —— 要生成多少个信道
@@ -24,7 +24,7 @@
 clc; clear;
 
 %% ---- 参数 ---------------------------------------------------------------
-work   = 'D:/project/信道产生';
+work   = 'E:/project/data/信道产生';
 N_chan = 50;          % 要生成的信道数
 nWork  = 8;           % 并行 worker 数
 fct    = 10;          % 频率步进 [Hz]

@@ -25,7 +25,7 @@ OUT = r"E:/workbuddy/store/2026-10-12-22-50-08/figs"
 os.makedirs(OUT, exist_ok=True)
 
 # ================= 1. 信道频率选择性 =================
-CH = r"D:/project/信道产生/data_fixed"
+CH = r"E:/project/data/信道产生/data_fixed"
 fl = sorted(glob.glob(os.path.join(CH, "channel_H_*.mat")))
 H, cid, names = [], [], []
 for f in fl:

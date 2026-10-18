@@ -43,8 +43,8 @@ run_one () {   # $1=tag $2=pulse $3=seed $4=data $5=描述
 echo "==== α 轴域内重训开始 $(date) ====" >> "$LOG"
 for COND in a12 a18; do
   case $COND in
-    a12) DATA="D:/project/ds_sens_matched/m_a12";;
-    a18) DATA="D:/project/ds_sens_matched/m_a18";;
+    a12) DATA="E:/project/data/ds_sens_matched/m_a12";;
+    a18) DATA="E:/project/data/ds_sens_matched/m_a18";;
   esac
   for SEED in 20261013 2 3; do
     case $SEED in 20261013) SUF="";; *) SUF="_s$SEED";; esac

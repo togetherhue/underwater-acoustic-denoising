@@ -30,7 +30,7 @@ CONDS = {
 
 if nargin < 1 || isempty(idx); idx = 1:size(CONDS,1); end
 
-out_base = 'D:/project/ds_sens';
+out_base = 'E:/project/data/ds_sens';
 
 % 只生成 testA / testC（评估用）时把下面注释打开可大幅提速；
 % 但域内重训需要 train/val，因此默认生成完整 split。

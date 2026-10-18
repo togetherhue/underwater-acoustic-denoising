@@ -3,7 +3,7 @@ clc; clear;
 fs=24000; Len=8000; df=fs/Len; fl=798; fh=1500; fct=10;
 Vfre=fl:fct:fh; f_full=fl:df:fh; bin=round(f_full/df);
 
-V=load('D:/project/信道产生/data_verify/channel_H_1.mat','channel_H');
+V=load('E:/project/data/信道产生/data_verify/channel_H_1.mat','channel_H');
 href=V.channel_H(:).';
 
 F   = fft(href(:), Len);
@@ -33,7 +33,7 @@ fprintf('\n参考：href 峰值位置=%d，hc 峰值位置=%d\n', ...
         find(abs(href)==max(abs(href)),1), find(abs(hc)==max(abs(hc)),1));
 
 % 再测：用 fct=60 的信道（只有 12 个独立频点）会怎样
-V2=load('D:/project/信道产生/data_verify/channel_H_1.mat','channel_H');
+V2=load('E:/project/data/信道产生/data_verify/channel_H_1.mat','channel_H');
 fprintf('\n结论提示：\n');
 fprintf('  这个 href 是 fct=60 生成的（只有 12 个独立频点），\n');
 fprintf('  用 10Hz 采样去取它必然有插值误差。\n');

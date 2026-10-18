@@ -67,7 +67,7 @@ print('=' * 78)
 print('多个 channel_H 文件的频带（归一化 cycles/sample）')
 print('=' * 78)
 import glob
-files = sorted(glob.glob('D:/project/信道产生/data/channel_H_*.mat'))[:8]
+files = sorted(glob.glob('E:/project/data/信道产生/data/channel_H_*.mat'))[:8]
 for p in files:
     H = gv(p, 'channel_H')
     N2 = 8192

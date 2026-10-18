@@ -16,18 +16,18 @@
 %      再插值回 3 Hz 网格，通带位置不会跑掉。
 %
 %  【怎么用】
-%      1) 把本文件放到 D:/project/信道产生/ 目录下
+%      1) 把本文件放到 E:/project/data/信道产生/ 目录下
 %         （该目录必须同时有 Input_PE.m、SeaWater_attenu.m、
 %           WriteenvRam.m、ramgeo1.5_atten.exe、tl.line）
 %      2) MATLAB 里 cd 到该目录，直接运行本脚本
-%      3) 结果写到  D:/project/信道产生/data_fixed/  （不会覆盖原来的 data/）
+%      3) 结果写到  E:/project/data/信道产生/data_fixed/  （不会覆盖原来的 data/）
 %
 %  【预期耗时】fct=10 时每个信道调用 RAM 71 次（原代码 235 次）
 % =========================================================================
 clc; clear; close all;
 
 %% ---- 0. 工作目录 ---------------------------------------------------------
-work = 'D:/project/信道产生';
+work = 'E:/project/data/信道产生';
 cd(work);
 assert(exist('ramgeo1.5_atten.exe','file') == 2, ...
     '当前目录找不到 ramgeo1.5_atten.exe，请确认 work 变量指向 信道产生 目录');
