@@ -245,6 +245,14 @@ def main():
     print("=" * 112)
     hdr = "%-24s" % "模型" + "".join("%18s" % COND_LABEL[c].replace("\n", " ") for c in conds)
     print(hdr); print("-" * len(hdr))
+    # ------------------------------------------------------------------
+    # 【语义警告】cond_delta[cfg][cond] = 同一配置在 cond 与 base 上的逐样本配对差
+    #   = "换个条件后这个模型退化/提升多少"（分布偏移的代价），**不是**脉冲分支效应。
+    #   例：cond_delta["R4_freqrefine_nopulse"]["a15_r10"] = −0.455
+    #       意思是 R4 在 rate=10 上比 base 低 0.455 dB，符号为负完全合理。
+    #   脉冲分支效应 Δ = R5 − R4 在 pulse_eff[cond]["imp"] 里。
+    #   两者语义完全不同，混用会得到符号相反的结论（8.14 节踩过这个坑）。
+    # ------------------------------------------------------------------
     cond_delta = {}
     for cf in CFG_ORDER:
         if cf not in tab.get("base", {}):

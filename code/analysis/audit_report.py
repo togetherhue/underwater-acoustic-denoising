@@ -72,6 +72,19 @@ def main():
         dv = r5 - r4
         checks.append(("域内重训(r10) Δ", "%+.3f" % dv, dv))
         checks.append(("域内重训(r10) R5", "%.2f" % r5, r5))
+    # ---- 语义检查：Δ 必须用 pulse_eff，不能用 cond_delta ----
+    if SA and "pulse_eff" in SA and "cond_delta" in SA:
+        for c in ("a15_r10", "a20_r5", "a15_r25"):
+            pe = SA["pulse_eff"].get(c, {}).get("imp", {}).get("mean")
+            cd = SA["cond_delta"].get("R4_freqrefine_nopulse", {}).get(c, {}).get("mean")
+            if pe is not None and cd is not None:
+                tag = "一致" if abs(pe - cd) < 1e-6 else "不同(正常:语义不同)"
+                print("  [语义] %-8s pulse_eff Δ=%+.3f  cond_delta=%+.3f  %s"
+                      % (c, pe, cd, tag))
+        # 说明：两者语义不同是正常的（cond_delta 是分布偏移的代价，可为负），
+        # 因此只做诊断输出，不参与通过/失败判定。
+        print("  （注：pulse_eff 与 cond_delta 语义不同，数值不同属正常）")
+
     # ---- 尺度敏感性 / 输入归一化 / 架构排序域内 ----
     SI = load("scale_invariance.json")
     if SI and SI.get("res"):
@@ -104,6 +117,20 @@ def main():
             checks.append(("域内重训(%s) 校正Δ" % nm,
                            "%+.3f" % v["corrected"], v["corrected"]))
             checks.append(("域内重训(%s) RC4" % nm, "%.2f" % v["r4"], v["r4"]))
+    # ---- 8.14 rate 轴双向 + α=2.0 端点 ----
+    R25J = load("indomain_r25_testA.json")
+    A20J = load("indomain_a20_testA.json")
+    if R25J:
+        checks.append(("2.5/s 域内校正Δ", "%+.3f" % R25J["indomain_d_corrected"],
+                       R25J["indomain_d_corrected"]))
+        checks.append(("2.5/s 跨种子 sd", "%.3f" % R25J["sd"], R25J["sd"]))
+    if A20J:
+        checks.append(("α=2.0 域内Δ均值", "%+.3f" % A20J["indomain_d"], A20J["indomain_d"]))
+        pss = [float(x) for x in A20J.get("per_seed", [])]
+        if pss and min(pss) < 0 < max(pss) and A20J.get("per_seed_r4"):
+            # 报告在"符号相反"分支里会打印 R4 跨种子极差，必须与 JSON 一致
+            rr = max(A20J["per_seed_r4"]) - min(A20J["per_seed_r4"])
+            checks.append(("α=2.0 R4 跨种子极差", "%.2f" % rr, rr))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
