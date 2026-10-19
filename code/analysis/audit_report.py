@@ -233,6 +233,31 @@ def main():
             df = CC["conds"]["a15_r10"]["d_identity"] - _st2.mean(d5)
             checks.append(("8.16.7 r10 种子偏差", "%+.3f" % df, df))
             checks.append(("8.16.7 r10 种子sd", "%.3f" % _st2.stdev(d5), _st2.stdev(d5)))
+
+    # ---- 8.17 实测数据冒烟测试 ----
+    RD = load(os.path.join("results", "real", "real_data_report.json"))
+    DG = load("real_data_diag.json")
+    if RD is None:
+        _p = os.path.join(HERE, "results", "real", "real_data_report.json")
+        if os.path.exists(_p):
+            RD = json.load(open(_p, encoding="utf-8"))
+    if RD:
+        r0 = RD[0] if isinstance(RD, list) else RD
+        checks.append(("8.17 带外输入", "%.4f" % r0["out_of_band_in"], r0["out_of_band_in"]))
+        checks.append(("8.17 带外输出", "%.5f" % r0["out_of_band_out"], r0["out_of_band_out"]))
+        checks.append(("8.17 谱平坦度输入", "%.4f" % r0["spec_flatness_in"], r0["spec_flatness_in"]))
+        checks.append(("8.17 带内占比", "%.3f" % r0["band_frac"], r0["band_frac"]))
+        checks.append(("8.17 帧数", "%d" % r0["n_frames"], r0["n_frames"]))
+    if DG and "synth" in DG:
+        s = DG["synth"]
+        # 关键论断：clean 自身带外极小 ⇒ 带外压低不是窄带化证据
+        checks.append(("8.17 clean 带外", "%.0e" % s["clean_ob"], s["clean_ob"]))
+        checks.append(("8.17 est 带内", "%.4f" % s["est_ib"], s["est_ib"]))
+        checks.append(("8.17 est 带外", "%.2e" % s["est_ob"], s["est_ob"]))
+        checks.append(("8.17 合成 SNR noisy", "%+.2f" % s["snr_noisy"], s["snr_noisy"]))
+        checks.append(("8.17 合成 SNR est", "%+.2f" % s["snr_est"], s["snr_est"]))
+        checks.append(("8.17 合成 SNR 提升", "%+.2f" % (s["snr_est"] - s["snr_noisy"]),
+                       s["snr_est"] - s["snr_noisy"]))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
