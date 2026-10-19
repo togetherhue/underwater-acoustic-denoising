@@ -2298,6 +2298,8 @@ est 基线：r = +0.974，RMS = 46 Hz，内点率 = 0.61</th></tr></tfoot></tabl
 后半段丢失 → 内点率与有效段骤降）。<br>
 <b>只有这一步通过了，把工具用到实测数据上的结果才值得相信。</b></div>
 
+__FIGAC__
+
 <h4>8.18.4 实测结果：这是一段<b>真实的 LFM 扫频</b>，降噪后完整保住</h4>
 <p>用同一工具跑 <code>_smoke/test.wav</code>（4.0 s）。
 先说不依赖任何跟踪算法的独立判据：逐帧取带内峰值后做线性回归，</p>
@@ -2741,6 +2743,8 @@ HTML = (HTML
                                  "图 AA 跨条件干预分解：(a) 净 Δ 拆成无信息基线与位置价值，(b) p 的质量几乎不变而价值在变"))
         .replace("__FIGAB__", img("figAB_rateaxis.png",
                                  "图 AB rate 轴分解与交叉验证：(a) 两项反向运动，(b) 与独立 5 种子零样本评估的对比"))
+        .replace("__FIGAC__", img("figAC_sweep_fidelity.png",
+                                 "图 AC 实测扫频保真：(a)(b) 输入/输出的时频图与 DP 轨迹，(c) 轨迹对齐与残差，(d) 闸门检验"))
         .replace("__FIGW__", img("figW_indomain_alpha.png",
                                  "图 W α 轴域内重训：(a) 域内重训后 α=1.8 的“尾形增强”消失，"
                                  "Δ 回到 base 水平；(b) 原因是 R4 在该条件上提升远大于 R5"))
