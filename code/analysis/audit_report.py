@@ -258,6 +258,51 @@ def main():
         checks.append(("8.17 合成 SNR est", "%+.2f" % s["snr_est"], s["snr_est"]))
         checks.append(("8.17 合成 SNR 提升", "%+.2f" % (s["snr_est"] - s["snr_noisy"]),
                        s["snr_est"] - s["snr_noisy"]))
+
+    # ---- 8.18 扫频保真 ----
+    HF = load("hfm_fidelity.json")
+    RS = load("real_sweep_check.json")
+    if HF and "selftest" in HF:
+        t_ = HF["selftest"]
+        checks.append(("8.18 自检 clean R²(1/f)", "%.4f" % t_["ref"]["r2_inv"],
+                       t_["ref"]["r2_inv"]))
+        checks.append(("8.18 自检 clean R²(f)", "%.4f" % t_["ref"]["r2_lin"],
+                       t_["ref"]["r2_lin"]))
+        checks.append(("8.18 自检 est 轨迹r", "%+.3f" % t_["est"]["r"],
+                       t_["est"]["r"]))
+        checks.append(("8.18 自检 est R²", "%.3f" % t_["est"]["r2_inv"],
+                       t_["est"]["r2_inv"]))
+        checks.append(("8.18 自检 est RMS", "%.0f" % t_["est"]["rms"],
+                       t_["est"]["rms"]))
+        checks.append(("8.18 自检 noisy 集中度", "%.3f" % t_["noisy"]["conc"],
+                       t_["noisy"]["conc"]))
+        checks.append(("8.18 自检 est 集中度", "%.3f" % t_["est"]["conc"],
+                       t_["est"]["conc"]))
+        # 四种破坏的覆盖比/内点率
+        for nm, v in t_["breaks"].items():
+            if nm.startswith("削边"):
+                checks.append(("8.18 破坏 削边覆盖比", "%.2f" % v["cover"], v["cover"]))
+            if nm.startswith("时移"):
+                checks.append(("8.18 破坏 时移 r", "%+.3f" % v["r"], v["r"]))
+    if RS:
+        checks.append(("8.18 实测 轨迹r", "%.4f" % RS["compare"]["r"], RS["compare"]["r"]))
+        checks.append(("8.18 实测 RMS", "%.1f" % RS["compare"]["rms_hz"],
+                       RS["compare"]["rms_hz"]))
+        checks.append(("8.18 实测 覆盖比", "%.3f" % RS["compare"]["cover"],
+                       RS["compare"]["cover"]))
+        checks.append(("8.18 实测 斜率", "%+.1f" % RS["slope_in"], RS["slope_in"]))
+        checks.append(("8.18 实测 输入R²(f)", "%.4f" % RS["input"]["r2_lin"],
+                       RS["input"]["r2_lin"]))
+        checks.append(("8.18 实测 输入R²(1/f)", "%.4f" % RS["input"]["r2_inv"],
+                       RS["input"]["r2_inv"]))
+        checks.append(("8.18 实测 峰值SNR入", "%.1f" % RS["input"]["snr_med"],
+                       RS["input"]["snr_med"]))
+        checks.append(("8.18 实测 峰值SNR出", "%.1f" % RS["output"]["snr_med"],
+                       RS["output"]["snr_med"]))
+        checks.append(("8.18 实测 集中度入", "%.3f" % RS["input"]["conc"],
+                       RS["input"]["conc"]))
+        checks.append(("8.18 实测 集中度出", "%.3f" % RS["output"]["conc"],
+                       RS["output"]["conc"]))
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
