@@ -115,12 +115,26 @@ def main():
                                      np.std(r4, ddof=1) if len(r4) > 1 else 0.0))
     print("  逐种子 R5: %s（sd=%.3f）" % (" / ".join("%.3f" % x for x in r5),
                                      np.std(r5, ddof=1) if len(r5) > 1 else 0.0))
-    if min(d) < 0 < max(d):
-        print("  **警告**：Δ 在种子间**符号相反**（%+.3f vs %+.3f）。"
-              % (min(d), max(d)))
-        print("            R4 跨种子极差 %.3f dB —— 该条件下的域内训练本身不稳定，"
-              % (max(r4) - min(r4)))
-        print("            其 Δ 不能用来判断分支价值（先看 R4 的种子波动，再看 Δ）。")
+    # 符号一致性 + 稳健离散度：区分"不显著"与"符号冲突"两种完全不同的情况
+    n_pos = int(sum(1 for x in d if x > 0))
+    n_neg = len(d) - n_pos
+    from scipy.stats import median_abs_deviation
+    med = float(np.median(d))
+    mad = float(median_abs_deviation(d, scale="normal"))
+    print("  符号一致性: %d 正 / %d 负（同号率 %.0f%%）；中位 %+.3f，MAD %.3f"
+          % (n_pos, n_neg, 100.0 * max(n_pos, n_neg) / len(d), med, mad))
+    if n_pos and n_neg:
+        print("  **注意**：Δ 在种子间符号不一致（%+.3f vs %+.3f）。" % (min(d), max(d)))
+        print("            R4 跨种子极差 %.3f dB，R5 为 %.3f dB。"
+              % (max(r4) - min(r4), max(r5) - min(r5)))
+        # 5 个中 4 个同号 ⇒ 不该再叫"不可判"，而是"方向一致但统计不显著"
+        if max(n_pos, n_neg) / len(d) >= 0.8 and len(d) >= 5:
+            print("            但 %d/%d 个种子同号且中位 %+.3f、MAD 仅 %.3f ⇒"
+                  % (max(n_pos, n_neg), len(d), med, mad))
+            print("            应读作「方向一致为正、统计上仍不能排除 0」，"
+                  "而非「完全不可判」。反向的那个种子需单独说明，不能丢弃。")
+        else:
+            print("            其 Δ 不能用来判断分支价值（先看 R4 的种子波动，再看 Δ）。")
     print("  跨种子: sd=%.3f, t=%+.2f, p=%.4f（%s）" %
           (sd, t, p, "显著" if p < 0.05 else "不显著"))
     if len(d) > 1:

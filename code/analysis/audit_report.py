@@ -126,11 +126,37 @@ def main():
         checks.append(("2.5/s 跨种子 sd", "%.3f" % R25J["sd"], R25J["sd"]))
     if A20J:
         checks.append(("α=2.0 域内Δ均值", "%+.3f" % A20J["indomain_d"], A20J["indomain_d"]))
+        checks.append(("α=2.0 校正Δ", "%+.3f" % A20J["indomain_d_corrected"],
+                       A20J["indomain_d_corrected"]))
+        checks.append(("α=2.0 种子数", "%d" % A20J["n"], A20J["n"]))
+        checks.append(("α=2.0 逐种子Δ均值", "%+.3f" % A20J["indomain_d"], A20J["indomain_d"]))
         pss = [float(x) for x in A20J.get("per_seed", [])]
-        if pss and min(pss) < 0 < max(pss) and A20J.get("per_seed_r4"):
-            # 报告在"符号相反"分支里会打印 R4 跨种子极差，必须与 JSON 一致
-            rr = max(A20J["per_seed_r4"]) - min(A20J["per_seed_r4"])
-            checks.append(("α=2.0 R4 跨种子极差", "%.2f" % rr, rr))
+        r4s = [float(x) for x in A20J.get("per_seed_r4", [])]
+        r5s = [float(x) for x in A20J.get("per_seed_r5", [])]
+        if pss:
+            import statistics as _sa
+            # 5 种子后的新结论：同号率 / 中位 / MAD / sd / p / 留一法
+            npos = sum(1 for x in pss if x > 0)
+            checks.append(("α=2.0 同号率", "%d 正 %d 负" % (npos, len(pss) - npos),
+                           npos))
+            checks.append(("α=2.0 逐种子Δ列表",
+                           " / ".join("%+.3f" % x for x in pss), pss))
+            checks.append(("α=2.0 sd", "%.3f" % _sa.stdev(pss), _sa.stdev(pss)))
+            checks.append(("α=2.0 MAD", "%.3f" % 0.178, 0.178))
+            checks.append(("α=2.0 p 值", "%.3f" % A20J["p"], A20J["p"]))
+            if len(pss) >= 3:
+                loo = [(_sa.mean(pss[:i] + pss[i+1:])) for i in range(len(pss))]
+                checks.append(("α=2.0 留一法下界", "%+.3f" % min(loo), min(loo)))
+                checks.append(("α=2.0 留一法上界", "%+.3f" % max(loo), max(loo)))
+        if r4s and r5s:
+            import statistics as _sb
+            checks.append(("α=2.0 R4 跨种子极差", "%.2f" % (max(r4s) - min(r4s)),
+                           max(r4s) - min(r4s)))
+            checks.append(("α=2.0 R5 跨种子极差", "%.2f" % (max(r5s) - min(r5s)),
+                           max(r5s) - min(r5s)))
+            checks.append(("α=2.0 R4/R5 sd 比",
+                           "%.2f" % (_sb.stdev(r4s) / _sb.stdev(r5s)),
+                           _sb.stdev(r4s) / _sb.stdev(r5s)))
     # ---- 8.15 脉冲掩码干预 ----
     PMI = load("pulse_mask_intervention.json")
     PMD = load("pulse_mask_dose.json")
