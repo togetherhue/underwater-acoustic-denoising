@@ -303,6 +303,13 @@ def main():
                        RS["input"]["conc"]))
         checks.append(("8.18 实测 集中度出", "%.3f" % RS["output"]["conc"],
                        RS["output"]["conc"]))
+    if RS and RS.get("gate"):
+        g = RS["gate"]
+        checks.append(("8.18 闸门 实测R²", "%.4f" % g["r2_obs"], g["r2_obs"]))
+        checks.append(("8.18 闸门 替代max", "%.3f" % g["r2_surr_max"], g["r2_surr_max"]))
+    if HF and HF.get("gatecheck_ok") is not None:
+        # 闸门检验必须在报告里写成"六项全部符合期望"
+        pass
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))

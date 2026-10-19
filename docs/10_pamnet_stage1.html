@@ -1627,12 +1627,43 @@ est 基线：r = +0.974，RMS = 46 Hz，内点率 = 0.61</th></tr></tfoot></tabl
 ⑤ 扫频速率 +125 Hz/s 比训练数据（LFM 1 s 内 798→1500，702 Hz/s）慢 5.6 倍，
 属轻度分布外；结论对这一参数区间成立。</div>
 
+<h4>8.18.5 闸门：怎么防止"在没有扫频的噪声上强行解读"</h4>
+<p>上面所有保真度指标都建立在"输入确实有扫频"这个前提上。所以必须先过一道闸门。
+<b>第一版闸门是错的</b>，这里如实记录：</p>
+<div class="box bad"><b>闸门 v1（"R² &gt; 0.6"）失效。</b>
+对四种无扫频信号实测：白噪声 R²=<b>0.748</b>、α 稳定脉冲噪声 0.619、
+带内窄带噪声 <b>0.893</b> —— 全部越过 0.6。
+原因有两个：① RANSAC 总能在一堆随机点里找到"被多数点认同的直线"；
+② DP 的平滑约束让噪声轨迹变成缓慢游走，<b>局部看起来确实近似线性</b>。<br>
+这条直接说明：<b>单靠一个绝对 R² 阈值判不出"有没有扫频"</b>。</div>
+
+<p>闸门 v2 用<b>替代数据检验</b>（时间序列分析的标准做法）：
+把信号做相位随机化——保持功率谱、破坏相位结构，于是扫频消失但谱形状不变——
+重复 3 次，比较原信号与其替代数据的 R²。判据是<b>两条同时满足</b>：</p>
+<pre>① R²原始 ≥ 0.95          （真实扫频严格服从 f=at+b：clean 0.9999、−3 dB 加噪 0.993）
+② R²原始 &gt; max(R²替代) + 0.05   （排除"谱形状本身导致轨迹看起来线性"的偶然）</pre>
+<table>
+<thead><tr><th>信号</th><th>R² 原始</th><th>R² 替代 max</th><th>差</th><th>闸门输出</th><th>期望</th></tr></thead>
+<tbody>
+<tr><td>白噪声</td><td>0.748</td><td>0.896</td><td>−0.148</td><td>不可判</td><td>不可判 ✓</td></tr>
+<tr><td>α 稳定脉冲噪声</td><td>0.619</td><td>0.659</td><td>−0.040</td><td>不可判</td><td>不可判 ✓</td></tr>
+<tr><td>带内窄带噪声</td><td>0.893</td><td>0.719</td><td>+0.174</td><td>不可判</td><td>不可判 ✓</td></tr>
+<tr><td>clean LFM</td><td>1.0000</td><td>0.859</td><td>+0.141</td><td>有扫频</td><td>有扫频 ✓</td></tr>
+<tr><td>clean HFM</td><td>0.9999</td><td>0.883</td><td>+0.117</td><td>有扫频</td><td>有扫频 ✓</td></tr>
+<tr><td><b>实测 test.wav</b></td><td><b>0.9994</b></td><td>0.828</td><td>+0.172</td><td><b>有扫频</b></td><td>有扫频 ✓</td></tr>
+</tbody></table>
+<div class="box good"><b>闸门 v2 六项全部符合期望</b>：三种噪声全被挡住（注意窄带噪声的差 +0.174 与真实信号相当，
+只有绝对阈值 0.95 能分开它们 —— 所以两条判据缺一不可），
+clean LFM / clean HFM / 实测录音全部通过。</div>
+
 <div class="box"><b>给后续实测的用法</b>（拿到任何扫频录音直接跑）：
-<pre>python hfm_sweep_fidelity.py --selftest                    # 先验证工具（约 1 分钟）
+<pre>python hfm_sweep_fidelity.py --gatecheck                  # 验闸门（六项应全过）
+python hfm_sweep_fidelity.py --selftest                   # 验工具（四项应全过）
 python hfm_sweep_fidelity.py --input 录音.wav --ckpt model_inm_pf.pth</pre>
-输出里有 <code>gate_r2</code> 闸门：输入轨迹的最好拟合 R² &lt; 0.6 时会明确报
-"无扫频结构，保真度不可判"，防止在没有扫频的噪声上强行解读 ——
-这正是 8.17 初稿犯的那个错（把扫频速率误读成噪声抖动）的反面保险。</div>
+输出 JSON 里有 <code>gate</code> 字段（含 <code>gate_pass</code> /
+<code>r2_obs</code> / <code>r2_surr</code>）。闸门未过时会明确报"无扫频结构，保真度不可判"。<br>
+<b>为什么必须留着这道闸门</b>：8.17 初稿把扫频速率误读成噪声抖动，
+是"看错信号"的错；闸门防的是另一种错 —— <b>在本来没有扫频的信号上读出一堆保真度数字</b>。</div>
 
 <h2>九、消融（单种子，BN 协议；仅用于同批内部比较）</h2>
 <figure><img src="figures/pamnet/figJ_pamnet_ablation.png" alt="图 J 消融结果（testA，单种子 BN）"><figcaption>图 J 消融结果（testA，单种子 BN）</figcaption></figure>

@@ -375,6 +375,99 @@ def enhance_long(x, fs, model, dev, rms_norm=True):
     return np.concatenate([Y[i, :len(x[i * SEG:(i + 1) * SEG])] for i in range(nf)])
 
 
+def phase_randomize(x, seed=0):
+    """相位随机化：保持功率谱、破坏相位结构 ⇒ 消掉扫频但保留谱形状"""
+    F = np.fft.rfft(x)
+    rng = np.random.default_rng(seed)
+    ph = np.exp(1j * rng.uniform(0, 2 * np.pi, len(F)))
+    ph[0] = 1
+    return np.fft.irfft(F * ph, n=len(x))
+
+
+def gate_check(x, fs, n_surr=3, r2_min=0.95, margin=0.05):
+    """闸门：这个信号里到底有没有「可判的扫频结构」？
+
+    【为什么不能只看 R²】初版用"R²>0.6"当闸门，实测发现**失效**：
+    白噪声 R²=0.748、带内窄带噪声 R²=0.893，都过了 0.6。
+    原因是 RANSAC 总能在一堆随机点里找到"被多数点认同的直线"，
+    而 DP 的平滑约束又让噪声轨迹变成缓慢游走，局部看起来确实近似线性。
+
+    【组合判据】两条同时满足才算有扫频：
+      ① 绝对 R² ≥ 0.95 —— 真实扫频的轨迹严格服从 f=at+b，
+         clean 是 0.9999、−3 dB 加噪后 0.993，与噪声的 0.62~0.89 有间隔；
+      ② 显著高于自身的相位随机化替代数据（margin 0.05）——
+         排除"谱形状本身导致了看起来线性的轨迹"这种偶然。
+    两种噪声都被挡住、真实 LFM/HFM 与实测录音都通过（见 --gatecheck）。
+    """
+    a = sweep_report(x, fs)
+    obs = max(a["r2_lin"], a["r2_inv"])
+    sur = []
+    for k in range(n_surr):
+        b = sweep_report(phase_randomize(x, 100 + k), fs)
+        sur.append(max(b["r2_lin"], b["r2_inv"]))
+    sur_max = max(sur) if sur else float("nan")
+    ok = bool(obs >= r2_min and obs > sur_max + margin)
+    return dict(r2_obs=float(obs), r2_surr=[float(v) for v in sur],
+                r2_surr_max=float(sur_max), r2_min=r2_min, margin=margin,
+                gate_pass=ok)
+
+
+def gatecheck():
+    """闸门自身的有效性检验：噪声必须挡住，真实扫频必须通过"""
+    print("=" * 70)
+    print("闸门有效性检验（组合判据：R²≥0.95 且显著高于替代数据）")
+    print("=" * 70)
+    fs = FS_NET
+    n = SEG * 2
+    rng = np.random.default_rng(7)
+    cases = {}
+    cases["白噪声"] = rng.standard_normal(n)
+    V = rng.uniform(-np.pi / 2, np.pi / 2, n)
+    W = rng.exponential(1.0, n)
+    al = 1.5
+    bg = (np.sin(al * V) / np.cos(V) ** (1.0 / al)) * \
+         (np.cos((1 - al) * V) / W) ** ((1 - al) / al)
+    cases["α稳定脉冲噪声"] = bg - bg.mean()
+    from scipy.signal import butter, sosfiltfilt
+    sos = butter(6, [780 / (fs / 2), 1520 / (fs / 2)], btype="band", output="sos")
+    cases["带内窄带噪声"] = sosfiltfilt(sos, rng.standard_normal(n))
+    c1, _ = gen_chirp(fs, 1.0, 798.0, 1500.0, "LFM", "rect", 0.0, 1.0)
+    z = np.zeros(n); z[:len(c1)] = c1
+    cases["clean LFM"] = z
+    ch, _ = gen_chirp(fs, 1.0, 798.0, 1500.0, "HFM", "rect", 0.0, 1.0)
+    z2 = np.zeros(n); z2[:len(ch)] = ch
+    cases["clean HFM"] = z2
+    # 真实录音
+    rp = os.path.join(HERE, "_smoke", "test.wav")
+    if os.path.exists(rp):
+        from scipy.io import wavfile
+        from scipy.signal import resample_poly
+        _, raw = wavfile.read(rp)
+        x = np.asarray(raw).astype(np.float64)
+        if np.issubdtype(np.asarray(raw).dtype, np.integer):
+            info = np.iinfo(np.asarray(raw).dtype)
+            x = x / max(abs(info.min), info.max)
+        cases["实测 test.wav"] = resample_poly(x.ravel(), 1, 4)
+    expect = {"白噪声": False, "α稳定脉冲噪声": False, "带内窄带噪声": False,
+              "clean LFM": True, "clean HFM": True, "实测 test.wav": True}
+    print("%-18s %8s %10s %8s %8s  %s" %
+          ("信号", "R²原始", "R²替代max", "差", "判定", "期望"))
+    allok = True
+    for nm, x in cases.items():
+        g = gate_check(x, fs)
+        exp = expect.get(nm, True)
+        good = (g["gate_pass"] == exp)
+        allok &= good
+        print("%-18s %8.4f %10.4f %+8.4f %8s  %s %s"
+              % (nm, g["r2_obs"], g["r2_surr_max"],
+                 g["r2_obs"] - g["r2_surr_max"],
+                 "有扫频" if g["gate_pass"] else "不可判",
+                 "有扫频" if exp else "不可判",
+                 "✓" if good else "✗"))
+    print("\n[闸门判定] %s" % ("✓ 全部符合期望" if allok else "✗ 有误判"))
+    return allok
+
+
 # ============================================================ 自检
 def selftest():
     print("=" * 74)
@@ -518,13 +611,17 @@ def run_real(path, ckpt, outdir):
           % (a["n_pts"], a["r2_inv"], a["r2_lin"], a["f_lo"], a["f_hi"], a["snr_med"]))
     print("  输出轨迹: 点 %d  R²(1/f) %.3f  R²(f) %.3f  覆盖 %.0f–%.0f Hz  峰值SNR %.1f dB"
           % (b["n_pts"], b["r2_inv"], b["r2_lin"], b["f_lo"], b["f_hi"], b["snr_med"]))
-    gate = max(a["r2_inv"], a["r2_lin"])
+    G = gate_check(s, FS_NET)
+    print("  闸门: R²原始 %.4f  替代数据 %.4f  差 %+.4f  ⇒ %s"
+          % (G["r2_obs"], G["r2_surr_max"], G["r2_obs"] - G["r2_surr_max"],
+             "存在扫频结构" if G["gate_pass"] else "无扫频结构"))
     print("  轨迹保真: r %+.3f  RMS %.0f Hz  覆盖比 %.2f"
           % (c.get("r", float("nan")), c.get("rms_hz", float("nan")),
              c.get("cover", float("nan"))))
-    if gate < 0.6:
-        print("  ⚠ 闸门未过：输入轨迹的最好拟合 R² 仅 %.3f < 0.6 ⇒ "
-              "【该信号没有可辨的扫频结构】，上面的保真度指标无意义。" % gate)
+    if not G["gate_pass"]:
+        print("  ⚠ 闸门未过（R² %.3f < %.2f 或未显著高于替代数据 %.3f）⇒ "
+              "【该信号没有可辨的扫频结构】，上面的保真度指标无意义。"
+              % (G["r2_obs"], G["r2_min"], G["r2_surr_max"]))
     os.makedirs(outdir, exist_ok=True)
     out = os.path.join(outdir, "hfm_fidelity_%s.json" % os.path.splitext(os.path.basename(path))[0])
     json.dump(dict(file=os.path.basename(path), fs_in=int(fs0), fs_net=FS_NET,
@@ -536,31 +633,37 @@ def run_real(path, ckpt, outdir):
                    compare=dict(r=c.get("r"), rms_hz=c.get("rms_hz"),
                                 cover=c.get("cover"), f_lo_err=c.get("f_lo_err"),
                                 f_hi_err=c.get("f_hi_err")),
-                   gate_r2=gate, gate_pass=bool(gate >= 0.6),
-                   verdict=("无扫频结构，保真度不可判" if gate < 0.6
-                            else "存在扫频结构，可读保真度")),
+                   gate=G,
+                   gate_r2=G["r2_obs"], gate_pass=G["gate_pass"],
+                   verdict=("存在扫频结构，可读保真度" if G["gate_pass"]
+                            else "无扫频结构，保真度不可判")),
               open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print("  -> %s" % out)
-    return dict(file=os.path.basename(path), gate=gate, gate_pass=bool(gate >= 0.6),
+    return dict(file=os.path.basename(path), gate=G["r2_obs"],
+                gate_pass=G["gate_pass"],
                 r=c.get("r"), rms=c.get("rms_hz"), cover=c.get("cover"))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--gatecheck", action="store_true",
+                    help="只检验闸门：噪声应挡住、真实扫频应通过")
     ap.add_argument("--input")
     ap.add_argument("--ckpt", default="model_inm_pf.pth")
     ap.add_argument("--outdir", default=os.path.join(HERE, "results", "real"))
     A = ap.parse_args()
 
     res = {}
+    if A.gatecheck:
+        res["gatecheck_ok"] = bool(gatecheck())
     if A.selftest:
         res["selftest"] = selftest()
     if A.input:
         files = ([A.input] if os.path.isfile(A.input)
                  else sorted(glob.glob(os.path.join(A.input, "*.wav"))))
         res["real"] = [run_real(f, A.ckpt, A.outdir) for f in files]
-    if not A.selftest and not A.input:
+    if not A.selftest and not A.input and not A.gatecheck:
         ap.print_help()
         return
     p = os.path.join(HERE, "sens_out", "hfm_fidelity.json")

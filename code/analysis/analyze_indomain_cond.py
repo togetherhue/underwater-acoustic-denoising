@@ -36,7 +36,8 @@ def read_summary(tag, split):
 def seeds(tagpre, split):
     """返回 [(label, R4_dict, R5_dict)]，只取两者都存在的种子"""
     out = []
-    for suf in ("", "_s2", "_s3"):
+    # 支持到 5 个种子：缺的后缀会被 if a and b 跳过，对只有 3 种子的条件安全
+    for suf in ("", "_s2", "_s3", "_s4", "_s5"):
         a = read_summary("%s_nopulse%s" % (tagpre, suf), split)
         b = read_summary("%s_pf%s" % (tagpre, suf), split)
         if a and b:
