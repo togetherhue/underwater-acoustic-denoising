@@ -341,6 +341,68 @@ def main():
     if HF and HF.get("gatecheck_ok") is not None:
         # 闸门检验必须在报告里写成"六项全部符合期望"
         pass
+    # ---- 8.19 SNR 轴扫描 ----
+    SP = load("snr_sweep.json")
+    if SP is None and os.path.exists(os.path.join("sens_out", "snr_sweep.json")):
+        SP = json.load(open("sens_out/snr_sweep.json", encoding="utf-8"))
+    if SP:
+        DD, CC = SP["delta"], SP["cells"]
+
+        def _tk(t):
+            t = float(t)
+            return ("%+d" % int(round(t))) if abs(t - round(t)) < 1e-9 else ("%+.2f" % t)
+
+        _ts = sorted({v["target_bg_snr"] for v in DD.values()
+                      if v["cond"] == "base" and abs(v["target_bg_snr"] + 3.29) > 1e-6})
+        _di = [DD["base|%s" % _tk(t)]["d_mean"] for t in _ts]
+        _dm = [DD["base|%s" % _tk(t)]["d_med"] for t in _ts]
+        _sd = [DD["base|%s" % _tk(t)]["d_sd"] for t in _ts]
+        _r4 = [CC["base|%s|R4" % _tk(t)]["mean"]["gain_imp"] for t in _ts]
+        _dc = [DD["base|%s" % _tk(t)]["d_clean_mean"] for t in _ts]
+        _np = sum(DD["base|%s" % _tk(t)]["n_pos"] for t in _ts) + \
+            DD["base|%s" % _tk(-3.29)]["n_pos"]
+        _ns = sum(DD["base|%s" % _tk(t)]["n_seed"] for t in _ts) + \
+            DD["base|%s" % _tk(-3.29)]["n_seed"]
+        checks.append(("8.19 网格点数", "%d" % len(_ts), len(_ts)))
+        checks.append(("8.19 同号计数", "%d/%d" % (_np, _ns), _np))
+        checks.append(("8.19 Δ峰值", "%+.3f" % max(_di), max(_di)))
+        checks.append(("8.19 Δ@+15", "%+.3f" % _di[-1], _di[-1]))
+        checks.append(("8.19 降幅", "%.3f" % (max(_di) - _di[-1]), max(_di) - _di[-1]))
+        checks.append(("8.19 降幅%", "%.1f%%" % (100 * (max(_di) - _di[-1]) / max(_di)),
+                       100 * (max(_di) - _di[-1]) / max(_di)))
+        checks.append(("8.19 斜率", "%.4f" % ((max(_di) - _di[-1]) /
+                                             (_ts[-1] - _ts[_di.index(max(_di))])), 0))
+        checks.append(("8.19 −15中位", "%+.3f" % _dm[0], _dm[0]))
+        checks.append(("8.19 +15干净帧", "%+.3f" % _dc[-1], _dc[-1]))
+        checks.append(("8.19 种子sd最大", "%.3f" % max(_sd), max(_sd)))
+        checks.append(("8.19 R4 起点", "%.2f" % _r4[0], _r4[0]))
+        checks.append(("8.19 R4 终点", "%.2f" % _r4[-1], _r4[-1]))
+        checks.append(("8.19 R4 变动", "%.2f" % (_r4[-1] - _r4[0]), _r4[-1] - _r4[0]))
+        # 收益效率
+        _e = {}
+        for c in ("base", "a12_r5", "a18_r5", "a20_r5"):
+            v0 = DD["%s|%s" % (c, _tk(-10))]["d_mean"] / CC["%s|%s|R4" % (c, _tk(-10))]["mean"]["gain_imp"]
+            v1 = DD["%s|%s" % (c, _tk(10))]["d_mean"] / CC["%s|%s|R4" % (c, _tk(10))]["mean"]["gain_imp"]
+            _e[c] = (v0, v1)
+            checks.append(("8.19 e(%s,-10)" % c, "%.4f" % v0, v0))
+            checks.append(("8.19 e(%s,+10)" % c, "%.4f" % v1, v1))
+        checks.append(("8.19 e 全轴下限", "%.4f" % min(v[0] for v in _e.values()),
+                       min(v[0] for v in _e.values())))
+        checks.append(("8.19 e 全轴上限", "%.4f" % max(v[0] for v in _e.values()),
+                       max(v[0] for v in _e.values())))
+        # 与 8.1b 的复算
+        _MT = load("matched_testA.json")
+        if _MT is None and os.path.exists(os.path.join("sens_out", "matched_testA.json")):
+            _MT = json.load(open("sens_out/matched_testA.json", encoding="utf-8"))
+        if _MT:
+            for cond, key in (("base", "base"), ("a12_r5", "m_a12"), ("a18_r5", "m_a18")):
+                _dd = DD["%s|%s" % (cond, _tk(-3.29))]["d_mean"] - \
+                    _MT["pulse_eff"][key]["imp"]["mean"]
+                checks.append(("8.19 复算差(%s)" % cond, "%+.3f" % _dd, _dd))
+        # 检测难度的偏相关必须写成"被否掉"
+        checks.append(("8.19 机制否证", "不支持「替代越来越难的检测」", True))
+        checks.append(("8.19 效率非超额倍数", "不是同一个量", True))
+
     for name, s, v in checks:
         ok = s in txt
         print("  %-22s 期望出现 %-8s  %s" % (name, s, "✓" if ok else "✗ 未找到"))
