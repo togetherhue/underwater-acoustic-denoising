@@ -303,6 +303,11 @@ def main():
                        RS["input"]["conc"]))
         checks.append(("8.18 实测 集中度出", "%.3f" % RS["output"]["conc"],
                        RS["output"]["conc"]))
+    if RS and RS.get("signal_noise_split"):
+        F2 = RS["signal_noise_split"]["2"]
+        checks.append(("8.18 信号损失", "%.1f" % abs(F2["d_sig_db"]), abs(F2["d_sig_db"])))
+        checks.append(("8.18 噪声抑制", "%.1f" % abs(F2["d_noise_db"]), abs(F2["d_noise_db"])))
+        checks.append(("8.18 相对抑制", "%.1f" % abs(F2["rel_db"]), abs(F2["rel_db"])))
     if RS and RS.get("gate"):
         g = RS["gate"]
         checks.append(("8.18 闸门 实测R²", "%.4f" % g["r2_obs"], g["r2_obs"]))
