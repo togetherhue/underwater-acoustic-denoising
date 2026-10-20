@@ -26,6 +26,8 @@ def main():
     h = io.open(HTML, encoding="utf-8").read()
     txt = re.sub(r"<[^>]+>", " ", h)
     txt = re.sub(r"\s+", " ", txt)
+    # 正文用排版减号 U+2212，检查串用 ASCII；统一后再比对，避免"数字对但符号不同"的假失败
+    txt = txt.replace("\u2212", "-")
     print("报告 %.2f MB，纯文本 %.0f KB" % (len(h.encode()) / 1048576, len(txt) / 1024))
     print()
 
@@ -399,6 +401,38 @@ def main():
                 _dd = DD["%s|%s" % (cond, _tk(-3.29))]["d_mean"] - \
                     _MT["pulse_eff"][key]["imp"]["mean"]
                 checks.append(("8.19 复算差(%s)" % cond, "%+.3f" % _dd, _dd))
+        # 8.19.5 逐种子趋势 / 8.19.6 testC
+        _TR = load("snr_alpha_trend.json")
+        if _TR is None and os.path.exists(os.path.join("sens_out", "snr_alpha_trend.json")):
+            _TR = json.load(open("sens_out/snr_alpha_trend.json", encoding="utf-8"))
+        if _TR:
+            for c, v in _TR.items():
+                checks.append(("8.19.5 斜率均值(%s)" % c, "%+.4f" % v["slope_mean"],
+                               v["slope_mean"]))
+                checks.append(("8.19.5 p(%s)" % c, "%.3f" % v["slope_p"], v["slope_p"]))
+                checks.append(("8.19.5 负向数(%s)" % c, "%d/%d" % (v["n_neg"], v["n_seed"]),
+                               v["n_neg"]))
+            checks.append(("8.19.5 α=1.2 斜率逐个",
+                           " / ".join("%+.4f" % x for x in _TR["a12_r5"]["slopes"]), 0))
+        _AC = load("snr_ac_compare.json")
+        if _AC is None and os.path.exists(os.path.join("sens_out", "snr_ac_compare.json")):
+            _AC = json.load(open(os.path.join("sens_out", "snr_ac_compare.json"),
+                                 encoding="utf-8"))
+        if _AC:
+            checks.append(("8.19.6 r", "%.3f" % _AC["pearson"]["r"], _AC["pearson"]["r"]))
+            checks.append(("8.19.6 ρ", "%.3f" % _AC["spearman"], _AC["spearman"]))
+            checks.append(("8.19.6 逐点差中位", "%+.3f" % _AC["diff"]["med"],
+                           _AC["diff"]["med"]))
+            checks.append(("8.19.6 同号点", "%d/11" % _AC["sign_agree"], _AC["sign_agree"]))
+            checks.append(("8.19.6 testC 峰值", "%+.3f" % _AC["testC"]["peak"],
+                           _AC["testC"]["peak"]))
+            checks.append(("8.19.6 testC +15", "%+.3f" % _AC["testC"]["hi"],
+                           _AC["testC"]["hi"]))
+            checks.append(("8.19.6 testC 降幅", "%.1f" % _AC["testC"]["pct"],
+                           _AC["testC"]["pct"]))
+            checks.append(("8.19.6 testC 全正", "%d/55" % sum(_AC["testC"]["n_pos"]),
+                           sum(_AC["testC"]["n_pos"])))
+        checks.append(("8.19.5 撤回 α=1.2", "撤回", True))
         # 检测难度的偏相关必须写成"被否掉"
         checks.append(("8.19 机制否证", "不支持「替代越来越难的检测」", True))
         checks.append(("8.19 效率非超额倍数", "不是同一个量", True))

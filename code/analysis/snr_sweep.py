@@ -48,6 +48,20 @@ CONDS = {
 }
 ALPHA = {"base": 1.5, "a12_r5": 1.2, "a18_r5": 1.8, "a20_r5": 2.0}
 SPLIT = "testA"
+SUF = ""          # testC 时置 "_testC"；npz/json 聚合产物用它区分
+STEM = "snrcell"   # 单元文件词干；testC 用 snrcellTC，避免被前缀 glob 误吞
+
+
+def set_split(name):
+    """切换评估划分。
+
+    单元文件名用不同词干（snrcell_ / snrcellTC_）而非后缀，因为聚合是按
+    `snrcell_*` 前缀 glob 的，加后缀会被 testA 的聚合误吞（踩过一次）。
+    """
+    global SPLIT, SUF, STEM
+    SPLIT = name
+    SUF = "" if name == "testA" else "_" + name
+    STEM = "snrcell" if name == "testA" else "snrcellTC"
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 for _p in [_HERE, r"C:\Users\32213\PycharmProjects\project1"]:
@@ -114,7 +128,7 @@ def prep(cond):
     Pc = np.mean(c32.astype(np.float64) ** 2, axis=1)
     Pv = np.mean(v ** 2, axis=1)
     Pi = np.mean(i ** 2, axis=1)
-    p = os.path.join(OUTD, "snr_%s.npz" % cond)
+    p = os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF))
     np.savez_compressed(p, v=v.astype(np.float32), i=i.astype(np.float32),
                         n=n32, c=c32, mask=mask, snr_nom=snr_nom,
                         Pc=Pc, Pv=Pv, Pi=Pi)
@@ -130,7 +144,7 @@ def prep(cond):
 def remix_gain(cond, g, d=None):
     """按逐样本增益 g 重混：mix = clean + g·v + imp。g 可为标量或 [N]。"""
     if d is None:
-        d = np.load(os.path.join(OUTD, "snr_%s.npz" % cond))
+        d = np.load(os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF)))
     c = d["c"].astype(np.float64)
     v = d["v"].astype(np.float64)
     i = d["i"].astype(np.float64)
@@ -148,7 +162,7 @@ def remix(cond, target_bg_snr, d=None):
     所以这里的 g 一般不恰好等于 1；要还原原始电平请用 remix_gain(cond, 1.0)。
     """
     if d is None:
-        d = np.load(os.path.join(OUTD, "snr_%s.npz" % cond))
+        d = np.load(os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF)))
     g = np.sqrt(d["Pc"] / (d["Pv"] * 10 ** (target_bg_snr / 10.0)))
     return remix_gain(cond, g, d)
 
@@ -350,8 +364,18 @@ def one_cell(cond, t, model, seed_idx, d=None, mdl=None):
     return row
 
 
-def run(seeds=5, skip_inter=False, replicate=False, extra_pts=()):
+def run(seeds=5, skip_inter=False, replicate=False, extra_pts=(), pts_all=()):
     jobs = []
+    if pts_all:
+        # 所有 α 条件 + base 在同一批 SNR 点上各跑一遍，用于 α×SNR 的共同网格
+        for t in pts_all:
+            for cond in ["base"] + INTER_CONDS:
+                for mname in ("R4", "R5"):
+                    for si in range(min(seeds, len(MODELS[mname]["ck"]))):
+                        jobs.append((cond, t, mname, si))
+                for bname in BASELINES:
+                    jobs.append((cond, t, bname, 0))
+        print("共同网格点 %s：%d 个任务" % (list(pts_all), len(jobs)), flush=True)
     if extra_pts:
         for t in extra_pts:
             for mname in ("R4", "R5"):
@@ -387,13 +411,13 @@ def run(seeds=5, skip_inter=False, replicate=False, extra_pts=()):
     cur_mdl = {}
     t00 = time.time()
     for k, (cond, t, mname, si) in enumerate(jobs):
-        tag = "snrcell_%s__t%s__%s__s%d.json" % (
-            cond, tkey(t).replace("+", "p").replace("-", "m"), mname, si)
+        tag = "%s_%s__t%s__%s__s%d.json" % (
+            STEM, cond, tkey(t).replace("+", "p").replace("-", "m"), mname, si)
         p = os.path.join(OUTD, tag)
         if os.path.exists(p):
             continue
         if cond not in cache_d:
-            cache_d[cond] = np.load(os.path.join(OUTD, "snr_%s.npz" % cond))
+            cache_d[cond] = np.load(os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF)))
         mdl = None
         if mname in MODELS:
             key = (mname, si)
@@ -413,7 +437,7 @@ def run(seeds=5, skip_inter=False, replicate=False, extra_pts=()):
 
 # ============================ 8. 汇总 ============================
 def agg():
-    files = sorted(glob.glob(os.path.join(OUTD, "snrcell_*.json")))
+    files = sorted(glob.glob(os.path.join(OUTD, STEM + "_*.json")))
     rows = [json.load(open(f, encoding="utf-8")) for f in files]
     if not rows:
         print("没有结果"); return
@@ -456,7 +480,7 @@ def agg():
                 n_pos=int(sum(1 for x in d if x > 0)),
                 tot_snr_meas=a["tot_snr_meas"])
     out["delta"] = deltas
-    p = os.path.join(OUTD, "snr_sweep.json")
+    p = os.path.join(OUTD, "snr_sweep%s.json" % SUF)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)
     print("->", p)
@@ -479,7 +503,7 @@ def diag(points=(("base", -15), ("base", -3), ("base", 0), ("base", 15))):
     """
     d_all = {}
     for cond, t in points:
-        d = np.load(os.path.join(OUTD, "snr_%s.npz" % cond))
+        d = np.load(os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF)))
         mix, g, Pv_new, Pi = remix(cond, t, d)
         per = {}
         for mname in ("R4", "R5"):
@@ -525,12 +549,12 @@ def detect():
     """
     rows = {}
     # 点集直接从已聚合结果里取，避免与 SNR_GRID / INTER_SNR 的常量漂移
-    _S = json.load(open(os.path.join(OUTD, "snr_sweep.json"), encoding="utf-8"))
+    _S = json.load(open(os.path.join(OUTD, "snr_sweep%s.json" % SUF), encoding="utf-8"))
     grid = [(v["cond"], v["target_bg_snr"]) for v in _S["delta"].values()]
     grid.append(("base", T_REPL))
     grid += [(c, T_REPL) for c in INTER_CONDS]
     for cond, t in grid:
-        d = np.load(os.path.join(OUTD, "snr_%s.npz" % cond))
+        d = np.load(os.path.join(OUTD, "snr_%s%s.npz" % (cond, SUF)))
         mix, g, Pv_new, Pi = remix(cond, t, d)
         x = mix.astype(np.float64)
         N, L = x.shape
@@ -588,21 +612,34 @@ def main():
     ap.add_argument("--skip-inter", action="store_true")
     ap.add_argument("--replicate", action="store_true")
     ap.add_argument("--extra-pts", nargs="*", type=float, default=[])
+    ap.add_argument("--pts-all", nargs="*", type=float, default=[])
+    ap.add_argument("--split", default="testA", choices=["testA", "testC"])
     ap.add_argument("--diag", action="store_true")
     ap.add_argument("--detect", action="store_true")
     ap.add_argument("--conds", nargs="*", default=[])
     A = ap.parse_args()
     os.makedirs(OUTD, exist_ok=True)
+    set_split(A.split)
+    if A.split != "testA":
+        print("[split] %s（产物后缀 %s）" % (A.split, SUF), flush=True)
     if A.prep:
         for c in (A.conds or list(CONDS)):
             print("[prep] %s" % c, flush=True)
             prep(c)
     if A.verify:
-        verify()
+        if SPLIT != "testA":
+            print("[verify] 闸门以 testA 存档为参照，跳过（%s 无对应存档）" % SPLIT)
+        else:
+            verify()
     if A.bench:
         bench()
     if A.run:
-        run(A.seeds, A.skip_inter, A.replicate)
+        if A.pts_all:
+            run(A.seeds, True, False, (), A.pts_all)
+        elif A.extra_pts:
+            run(A.seeds, True, False, A.extra_pts)
+        else:
+            run(A.seeds, A.skip_inter, A.replicate)
     if A.diag:
         diag()
     if A.detect:
