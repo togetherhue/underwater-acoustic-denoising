@@ -262,7 +262,7 @@ def main():
             checks.append(("8.16.7 r10 种子偏差", "%+.3f" % df, df))
             checks.append(("8.16.7 r10 种子sd", "%.3f" % _st2.stdev(d5), _st2.stdev(d5)))
 
-    # ---- 8.17 实测数据冒烟测试 ----
+    # ---- 8.17.1 实测数据：旧指标失效 ----
     RD = load(os.path.join("results", "real", "real_data_report.json"))
     DG = load("real_data_diag.json")
     if RD is None:
@@ -271,65 +271,69 @@ def main():
             RD = json.load(open(_p, encoding="utf-8"))
     if RD:
         r0 = RD[0] if isinstance(RD, list) else RD
-        checks.append(("8.17 带外输入", "%.4f" % r0["out_of_band_in"], r0["out_of_band_in"]))
-        checks.append(("8.17 带外输出", "%.5f" % r0["out_of_band_out"], r0["out_of_band_out"]))
-        checks.append(("8.17 谱平坦度输入", "%.4f" % r0["spec_flatness_in"], r0["spec_flatness_in"]))
-        checks.append(("8.17 带内占比", "%.3f" % r0["band_frac"], r0["band_frac"]))
-        checks.append(("8.17 帧数", "%d" % r0["n_frames"], r0["n_frames"]))
+        checks.append(("8.17.1 带外输入", "%.4f" % r0["out_of_band_in"], r0["out_of_band_in"]))
+        checks.append(("8.17.1 带外输出", "%.5f" % r0["out_of_band_out"], r0["out_of_band_out"]))
+        checks.append(("8.17.1 谱平坦度输入", "%.4f" % r0["spec_flatness_in"], r0["spec_flatness_in"]))
+        checks.append(("8.17.1 带内占比", "%.3f" % r0["band_frac"], r0["band_frac"]))
+        checks.append(("8.17.1 帧数", "%d" % r0["n_frames"], r0["n_frames"]))
+        # 频段表：24 段 × 125 Hz（FS_NET/2=3000，不是表头曾误写的 250 Hz）
+        checks.append(("8.17.1 频段末段", "2875–3000", True))
+        checks.append(("8.17.1 带外最小", "1.5e-04", True))
+        checks.append(("8.17.1 带外中位", "8.8e-04", True))
     if DG and "synth" in DG:
         s = DG["synth"]
         # 关键论断：clean 自身带外极小 ⇒ 带外压低不是窄带化证据
-        checks.append(("8.17 clean 带外", "%.0e" % s["clean_ob"], s["clean_ob"]))
-        checks.append(("8.17 est 带内", "%.4f" % s["est_ib"], s["est_ib"]))
-        checks.append(("8.17 est 带外", "%.2e" % s["est_ob"], s["est_ob"]))
-        checks.append(("8.17 合成 SNR noisy", "%+.2f" % s["snr_noisy"], s["snr_noisy"]))
-        checks.append(("8.17 合成 SNR est", "%+.2f" % s["snr_est"], s["snr_est"]))
-        checks.append(("8.17 合成 SNR 提升", "%+.2f" % (s["snr_est"] - s["snr_noisy"]),
+        checks.append(("8.17.1 clean 带外", "%.0e" % s["clean_ob"], s["clean_ob"]))
+        checks.append(("8.17.1 est 带内", "%.4f" % s["est_ib"], s["est_ib"]))
+        checks.append(("8.17.1 est 带外", "%.2e" % s["est_ob"], s["est_ob"]))
+        checks.append(("8.17.1 合成 SNR noisy", "%+.2f" % s["snr_noisy"], s["snr_noisy"]))
+        checks.append(("8.17.1 合成 SNR est", "%+.2f" % s["snr_est"], s["snr_est"]))
+        checks.append(("8.17.1 合成 SNR 提升", "%+.2f" % (s["snr_est"] - s["snr_noisy"]),
                        s["snr_est"] - s["snr_noisy"]))
 
-    # ---- 8.18 扫频保真 ----
+    # ---- 8.17.3~8.17.5 扫频保真 ----
     HF = load("hfm_fidelity.json")
     RS = load("real_sweep_check.json")
     if HF and "selftest" in HF:
         t_ = HF["selftest"]
-        checks.append(("8.18 自检 clean R²(1/f)", "%.4f" % t_["ref"]["r2_inv"],
+        checks.append(("8.17.3 自检 clean R²(1/f)", "%.4f" % t_["ref"]["r2_inv"],
                        t_["ref"]["r2_inv"]))
-        checks.append(("8.18 自检 clean R²(f)", "%.4f" % t_["ref"]["r2_lin"],
+        checks.append(("8.17.3 自检 clean R²(f)", "%.4f" % t_["ref"]["r2_lin"],
                        t_["ref"]["r2_lin"]))
-        checks.append(("8.18 自检 est 轨迹r", "%+.3f" % t_["est"]["r"],
+        checks.append(("8.17.3 自检 est 轨迹r", "%+.3f" % t_["est"]["r"],
                        t_["est"]["r"]))
-        checks.append(("8.18 自检 est R²", "%.3f" % t_["est"]["r2_inv"],
+        checks.append(("8.17.3 自检 est R²", "%.3f" % t_["est"]["r2_inv"],
                        t_["est"]["r2_inv"]))
-        checks.append(("8.18 自检 est RMS", "%.0f" % t_["est"]["rms"],
+        checks.append(("8.17.3 自检 est RMS", "%.0f" % t_["est"]["rms"],
                        t_["est"]["rms"]))
-        checks.append(("8.18 自检 noisy 集中度", "%.3f" % t_["noisy"]["conc"],
+        checks.append(("8.17.3 自检 noisy 集中度", "%.3f" % t_["noisy"]["conc"],
                        t_["noisy"]["conc"]))
-        checks.append(("8.18 自检 est 集中度", "%.3f" % t_["est"]["conc"],
+        checks.append(("8.17.3 自检 est 集中度", "%.3f" % t_["est"]["conc"],
                        t_["est"]["conc"]))
         # 四种破坏的覆盖比/内点率
         for nm, v in t_["breaks"].items():
             if nm.startswith("削边"):
-                checks.append(("8.18 破坏 削边覆盖比", "%.2f" % v["cover"], v["cover"]))
+                checks.append(("8.17.3 破坏 削边覆盖比", "%.2f" % v["cover"], v["cover"]))
             if nm.startswith("时移"):
-                checks.append(("8.18 破坏 时移 r", "%+.3f" % v["r"], v["r"]))
+                checks.append(("8.17.3 破坏 时移 r", "%+.3f" % v["r"], v["r"]))
     if RS:
-        checks.append(("8.18 实测 轨迹r", "%.4f" % RS["compare"]["r"], RS["compare"]["r"]))
-        checks.append(("8.18 实测 RMS", "%.1f" % RS["compare"]["rms_hz"],
+        checks.append(("8.17.4 实测 轨迹r", "%.4f" % RS["compare"]["r"], RS["compare"]["r"]))
+        checks.append(("8.17.4 实测 RMS", "%.1f" % RS["compare"]["rms_hz"],
                        RS["compare"]["rms_hz"]))
-        checks.append(("8.18 实测 覆盖比", "%.3f" % RS["compare"]["cover"],
+        checks.append(("8.17.4 实测 覆盖比", "%.3f" % RS["compare"]["cover"],
                        RS["compare"]["cover"]))
-        checks.append(("8.18 实测 斜率", "%+.1f" % RS["slope_in"], RS["slope_in"]))
-        checks.append(("8.18 实测 输入R²(f)", "%.4f" % RS["input"]["r2_lin"],
+        checks.append(("8.17.4 实测 斜率", "%+.1f" % RS["slope_in"], RS["slope_in"]))
+        checks.append(("8.17.4 实测 输入R²(f)", "%.4f" % RS["input"]["r2_lin"],
                        RS["input"]["r2_lin"]))
-        checks.append(("8.18 实测 输入R²(1/f)", "%.4f" % RS["input"]["r2_inv"],
+        checks.append(("8.17.4 实测 输入R²(1/f)", "%.4f" % RS["input"]["r2_inv"],
                        RS["input"]["r2_inv"]))
-        checks.append(("8.18 实测 峰值SNR入", "%.1f" % RS["input"]["snr_med"],
+        checks.append(("8.17.4 实测 峰值SNR入", "%.1f" % RS["input"]["snr_med"],
                        RS["input"]["snr_med"]))
-        checks.append(("8.18 实测 峰值SNR出", "%.1f" % RS["output"]["snr_med"],
+        checks.append(("8.17.4 实测 峰值SNR出", "%.1f" % RS["output"]["snr_med"],
                        RS["output"]["snr_med"]))
-        checks.append(("8.18 实测 集中度入", "%.3f" % RS["input"]["conc"],
+        checks.append(("8.17.4 实测 集中度入", "%.3f" % RS["input"]["conc"],
                        RS["input"]["conc"]))
-        checks.append(("8.18 实测 集中度出", "%.3f" % RS["output"]["conc"],
+        checks.append(("8.17.4 实测 集中度出", "%.3f" % RS["output"]["conc"],
                        RS["output"]["conc"]))
     if RS and RS.get("signal_noise_split"):
         F2 = RS["signal_noise_split"]["2"]
@@ -338,8 +342,8 @@ def main():
         checks.append(("8.18 相对抑制", "%.1f" % abs(F2["rel_db"]), abs(F2["rel_db"])))
     if RS and RS.get("gate"):
         g = RS["gate"]
-        checks.append(("8.18 闸门 实测R²", "%.4f" % g["r2_obs"], g["r2_obs"]))
-        checks.append(("8.18 闸门 替代max", "%.3f" % g["r2_surr_max"], g["r2_surr_max"]))
+        checks.append(("8.17.5 闸门 实测R²", "%.4f" % g["r2_obs"], g["r2_obs"]))
+        checks.append(("8.17.5 闸门 替代max", "%.3f" % g["r2_surr_max"], g["r2_surr_max"]))
     if HF and HF.get("gatecheck_ok") is not None:
         # 闸门检验必须在报告里写成"六项全部符合期望"
         pass
@@ -515,6 +519,18 @@ def main():
             ok_refs = False
     if ok_refs:
         print("  交叉引用（第X节）：全部有效（引用 %d 个）" % len(refs))
+
+    # C：8.17 与 8.18 合并后，小节编号应连续（8.16 → 8.17 → 8.19）
+    h3 = re.findall(r"<h3>(8\.\d+)", h)
+    print("  8.x 小节编号：%s" % " → ".join(h3[-4:]))
+    if "8.18" in h3:
+        print("  ✗ 8.18 仍作为独立小节存在（合并未完成）")
+        issues.append("8.18 仍作为独立小节存在")
+    h4 = re.findall(r"<h4>(8\.\d+\.\d+)", h)
+    dup = sorted({x for x in h4 if h4.count(x) > 1})
+    print("  8.x 子节 %d 个；编号重复：%s" % (len(h4), dup if dup else "无"))
+    if dup:
+        issues.append("子节编号重复：%s" % dup)
 
     nimg = h.count("data:image/png;base64")
     print("  内嵌图 %d 张；figs_pamnet 下 PNG %d 张"
